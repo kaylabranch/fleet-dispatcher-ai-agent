@@ -1,0 +1,65 @@
+{
+    "robots": [
+        {
+            "id": "r1",
+            "location": {
+                "x": 2,
+                "y": 5
+            },
+            "status": "idle",
+            "battery": 92,
+            "current_task_id": null,
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        },
+        {
+            "id": "r3",
+            "location": {
+                "x": 4,
+                "y": 4
+            },
+            "status": "idle",
+            "battery": 88,
+            "current_task_id": null,
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        }
+    ],
+    "tasks": [
+        {
+            "id": "t30",
+            "pickup": {
+                "x": 1,
+                "y": 1
+            },
+            "dropoff": {
+                "x": 6,
+                "y": 9
+            },
+            "priority": "normal",
+            "deadline": null,
+            "status": "pending",
+            "assigned_robot_id": null
+        }
+    ],
+    "events": [
+        {
+            "id": "e9",
+            "type": "sensor_anomaly",
+            "robot_id": "r3",
+            "task_id": null,
+            "timestamp": "2026-09-21T18:07:00Z",
+            "details": "r3 reported location (40,40), inconsistent with last known position (4,4) and max possible travel — likely bad reading, do not trust blindly"
+        }
+    ],
+    "disruption_probabilities": {
+        "breakdown": 0.0,
+        "low_battery": 0.0,
+        "blocked_route": 0.0,
+        "new_urgent_task": 0.0,
+        "delay": 0.0,
+        "sensor_anomaly": 0.3,
+        "deadline_conflict": 0.0,
+        "intervention_conflict": 0.0
+    }
+}

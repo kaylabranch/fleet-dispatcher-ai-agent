@@ -1,0 +1,101 @@
+{
+    "robots": [
+        {
+            "id": "r1",
+            "location": {
+                "x": 2,
+                "y": 5
+            },
+            "status": "idle",
+            "battery": 92,
+            "current_task_id": null,
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        },
+        {
+            "id": "r2",
+            "location": {
+                "x": 8,
+                "y": 1
+            },
+            "status": "idle",
+            "battery": 55,
+            "current_task_id": null,
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        }
+    ],
+    "tasks": [
+        {
+            "id": "t14",
+            "pickup": {
+                "x": 3,
+                "y": 3
+            },
+            "dropoff": {
+                "x": 5,
+                "y": 5
+            },
+            "priority": "high",
+            "deadline": "2026-09-21T17:00:00Z",
+            "status": "pending",
+            "assigned_robot_id": null
+        },
+        {
+            "id": "t20",
+            "pickup": {
+                "x": 1,
+                "y": 1
+            },
+            "dropoff": {
+                "x": 9,
+                "y": 9
+            },
+            "priority": "urgent",
+            "deadline": "2026-09-21T18:10:00Z",
+            "status": "pending",
+            "assigned_robot_id": null
+        },
+        {
+            "id": "t21",
+            "pickup": {
+                "x": 2,
+                "y": 2
+            },
+            "dropoff": {
+                "x": 7,
+                "y": 7
+            },
+            "priority": "urgent",
+            "deadline": "2026-09-21T18:15:00Z",
+            "status": "pending",
+            "assigned_robot_id": null
+        },
+        {
+            "id": "t22",
+            "pickup": {
+                "x": 0,
+                "y": 5
+            },
+            "dropoff": {
+                "x": 5,
+                "y": 0
+            },
+            "priority": "high",
+            "deadline": null,
+            "status": "pending",
+            "assigned_robot_id": null
+        }
+    ],
+    "events": [],
+    "disruption_probabilities": {
+        "breakdown": 0.02,
+        "low_battery": 0.02,
+        "blocked_route": 0.02,
+        "new_urgent_task": 0.1,
+        "delay": 0.15,
+        "sensor_anomaly": 0.02,
+        "deadline_conflict": 0.3,
+        "intervention_conflict": 0.0
+    }
+}

@@ -1,0 +1,119 @@
+{
+    "robots": [
+        {
+            "id": "r1",
+            "location": {
+                "x": 2,
+                "y": 5
+            },
+            "status": "idle",
+            "battery": 92,
+            "current_task_id": null,
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        },
+        {
+            "id": "r2",
+            "location": {
+                "x": 8,
+                "y": 1
+            },
+            "status": "en_route",
+            "battery": 61,
+            "current_task_id": "t12",
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        },
+        {
+            "id": "r3",
+            "location": {
+                "x": 4,
+                "y": 4
+            },
+            "status": "idle",
+            "battery": 14,
+            "current_task_id": null,
+            "speed": 1,
+            "last_reported_at": "2026-09-21T18:00:00Z"
+        },
+        {
+            "id": "r4",
+            "location": {
+                "x": 0,
+                "y": 0
+            },
+            "status": "broken",
+            "battery": 40,
+            "current_task_id": null,
+            "speed": 0,
+            "last_reported_at": "2026-09-21T17:58:00Z"
+        }
+    ],
+    "tasks": [
+        {
+            "id": "t12",
+            "pickup": {
+                "x": 8,
+                "y": 1
+            },
+            "dropoff": {
+                "x": 9,
+                "y": 6
+            },
+            "priority": "normal",
+            "deadline": "2026-09-22T14:30:00Z",
+            "status": "in_progress",
+            "assigned_robot_id": "r2"
+        },
+        {
+            "id": "t13",
+            "pickup": {
+                "x": 1,
+                "y": 1
+            },
+            "dropoff": {
+                "x": 6,
+                "y": 9
+            },
+            "priority": "urgent",
+            "deadline": "2026-09-21T21:00:00Z",
+            "status": "pending",
+            "assigned_robot_id": null
+        },
+        {
+            "id": "t14",
+            "pickup": {
+                "x": 3,
+                "y": 3
+            },
+            "dropoff": {
+                "x": 5,
+                "y": 5
+            },
+            "priority": "high",
+            "deadline": "2026-09-21T17:00:00Z",
+            "status": "pending",
+            "assigned_robot_id": null
+        }
+    ],
+    "events": [
+        {
+            "id": "e5",
+            "type": "breakdown",
+            "robot_id": "r4",
+            "task_id": null,
+            "timestamp": "2026-09-21T18:02:00Z",
+            "details": "r4 stalled at (0,0) while idle, motor fault"
+        }
+    ],
+    "disruption_probabilities": {
+        "breakdown": 0.01,
+        "low_battery": 0.02,
+        "blocked_route": 0.01,
+        "new_urgent_task": 0.02,
+        "delay": 0.02,
+        "sensor_anomaly": 0.01,
+        "deadline_conflict": 0.01,
+        "intervention_conflict": 0.0
+    }
+}
