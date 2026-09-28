@@ -1,6 +1,6 @@
 # Fleet Dispatch Agent
 
-A simulated fleet-dispatch system where an LLM agent (Claude, via tool use) manages a fleet of
+[WIP] A simulated fleet-dispatch system where an LLM agent (Claude, via tool use) manages a fleet of
 delivery/service robots: assigning tasks, rerouting around disruptions, and explaining its
 reasoning. See [.github/copilot-instructions.md](.github/copilot-instructions.md) for the full
 design doc.
