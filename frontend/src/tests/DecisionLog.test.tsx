@@ -44,8 +44,22 @@ describe("DecisionLog", () => {
         expect(screen.getByText("battery low")).toBeInTheDocument();
     });
 
+    it("shows approval and rejection outcomes even when they share a cycle", () => {
+        const make = (reasoning: string): DecisionLogEntry => ({
+            cycle: 9,
+            timestamp: "2026-09-21T18:02:15Z",
+            decisions: [{ action: "recall_to_charge", robot_id: "r3", task_id: null, reasoning }],
+            flagged_risks: [],
+        });
+        render(<DecisionLog entries={[make("[approved] battery low"), make("[rejected] battery low")]} />);
+        expect(screen.getByText("Approved")).toBeInTheDocument();
+        expect(screen.getByText("Rejected")).toBeInTheDocument();
+        expect(screen.getAllByText("battery low")).toHaveLength(2);
+    });
+
     it("skips cycles with no decisions or risks", () => {
         render(<DecisionLog entries={[{ cycle: 3, timestamp: "2026-09-21T18:02:15Z", decisions: [], flagged_risks: [] }]} />);
         expect(screen.getByText(/no decisions logged yet/i)).toBeInTheDocument();
     });
 });
+

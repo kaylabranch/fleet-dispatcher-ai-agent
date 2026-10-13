@@ -276,15 +276,15 @@ class AgentLoop:
         approval_id: str,
         action: str,
         modified_payload: dict | None = None,
-    ) -> None:
-        """Apply, discard, or validate-and-apply a human-reviewed action."""
+    ) -> DecisionLogEntry:
+        """Apply, discard, or validate-and-apply a human-reviewed action, and log the outcome."""
         approval = self.pending_approvals.get(approval_id)
         if approval is None:
             raise ValueError(f"Unknown pending approval: {approval_id}")
         if action == "reject":
             self.pending_approvals.pop(approval_id)
             approval.status = "rejected"
-            return
+            return self._log_approval_outcome(approval, "rejected", approval.payload)
         if action not in {"approve", "modify"}:
             raise ValueError(f"Unknown approval action: {action}")
         model_cls = INPUT_MODELS[approval.action]
@@ -296,3 +296,22 @@ class AgentLoop:
         handler(payload)
         self.pending_approvals.pop(approval_id)
         approval.status = "approved"
+        return self._log_approval_outcome(approval, "approved (modified)" if action == "modify" else "approved", payload_data)
+
+    def _log_approval_outcome(self, approval: PendingApproval, outcome: str, payload: dict) -> DecisionLogEntry:
+        """Append a decision log entry recording how a supervisor resolved an approval."""
+        entry = DecisionLogEntry(
+            cycle=self.world.cycle,
+            timestamp=_now(),
+            decisions=[
+                Decision(
+                    action=approval.action,
+                    robot_id=payload.get("robot_id"),
+                    task_id=payload.get("task_id"),
+                    reasoning=f"[{outcome}] {approval.reasoning}",
+                )
+            ],
+            flagged_risks=[],
+        )
+        self.decision_log.append(entry)
+        return entry

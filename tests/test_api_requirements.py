@@ -47,3 +47,6 @@ def test_approving_an_action_applies_it_and_clears_the_approval() -> None:
         assert missing.status_code == 404
         assert state.loop.world.robots["r1"].status == "charging"
         assert state.loop.pending_approvals == {}
+        outcomes = [entry.decisions[0].reasoning for entry in state.loop.decision_log[-2:]]
+        assert outcomes[0].startswith("[approved]")
+        assert outcomes[1].startswith("[rejected]")

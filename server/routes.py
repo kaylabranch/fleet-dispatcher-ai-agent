@@ -125,7 +125,7 @@ async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequ
     state = get_app_state()
     logger.info("Approval response received (approval_id=%s, action=%s)", approval_id, request.action)
     try:
-        state.loop.resolve_approval(
+        entry = state.loop.resolve_approval(
             approval_id,
             action=request.action,
             modified_payload=request.payload,
@@ -140,7 +140,7 @@ async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequ
     await state.connection_manager.broadcast(
         {
             "fleet": state.loop.world.get_snapshot(),
-            "decision": None,
+            "decision": entry.model_dump(),
             "approvals": list(state.loop.pending_approvals.values()),
             "status": state.status,
             "scenario": state.scenario_name,

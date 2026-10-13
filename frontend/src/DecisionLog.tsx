@@ -1,5 +1,5 @@
 import type { DecisionLogEntry } from "./types";
-import { actionSummary, cleanReasoning, cleanRisk, isLocalFallback, isPendingApproval } from "./actionLabels";
+import { actionSummary, approvalOutcome, cleanReasoning, cleanRisk, isLocalFallback, isPendingApproval } from "./actionLabels";
 
 interface DecisionLogProps {
     entries: DecisionLogEntry[];
@@ -14,10 +14,10 @@ export function DecisionLog({ entries }: DecisionLogProps) {
     return (
         <div className="max-h-96 w-full max-w-xl overflow-y-auto rounded border border-gray-300">
             {visible.length === 0 && <p className="p-4 text-sm text-gray-500">No decisions logged yet.</p>}
-            {visible.map((entry) => {
+            {visible.map((entry, entryIndex) => {
                 const risks = [...new Set(entry.flagged_risks.map(cleanRisk))];
                 return (
-                    <div key={entry.cycle} className="border-b border-gray-200 p-3 last:border-b-0">
+                    <div key={`${entry.cycle}-${entry.timestamp}-${entryIndex}`} className="border-b border-gray-200 p-3 last:border-b-0">
                         <div className="text-xs font-semibold text-gray-500">
                             Cycle {entry.cycle} — {new Date(entry.timestamp).toLocaleTimeString()}
                         </div>
@@ -31,6 +31,21 @@ export function DecisionLog({ entries }: DecisionLogProps) {
                                         {isPendingApproval(decision.reasoning) && (
                                             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
                                                 Awaiting approval
+                                            </span>
+                                        )}
+                                        {approvalOutcome(decision.reasoning) && (
+                                            <span
+                                                className={`rounded px-1.5 py-0.5 text-xs ${
+                                                    approvalOutcome(decision.reasoning) === "rejected"
+                                                        ? "bg-red-100 text-red-800"
+                                                        : "bg-green-100 text-green-800"
+                                                }`}
+                                            >
+                                                {approvalOutcome(decision.reasoning) === "rejected"
+                                                    ? "Rejected"
+                                                    : approvalOutcome(decision.reasoning) === "approved"
+                                                      ? "Approved"
+                                                      : "Approved (edited)"}
                                             </span>
                                         )}
                                         {isLocalFallback(decision.reasoning) && (

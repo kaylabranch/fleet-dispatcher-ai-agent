@@ -9,7 +9,15 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 /** Prefixes the backend adds to reasoning text; they are shown as badges instead. */
-const REASONING_PREFIX = /^\s*(\[pending approval\]|\[local fallback\])\s*/gi;
+const REASONING_PREFIX = /^\s*(\[pending approval\]|\[local fallback\]|\[approved(?: \(modified\))?\]|\[rejected\])\s*/gi;
+
+export type ApprovalOutcome = "approved" | "approved (modified)" | "rejected";
+
+/** Returns how a supervisor resolved the action, if the reasoning carries an outcome marker. */
+export function approvalOutcome(reasoning: string): ApprovalOutcome | null {
+    const match = reasoning.match(/^\s*\[(approved(?: \(modified\))?|rejected)\]/i);
+    return match ? (match[1].toLowerCase() as ApprovalOutcome) : null;
+}
 
 export function actionLabel(action: string): string {
     return ACTION_LABELS[action] ?? action.replace(/_/g, " ").replace(/^\w/, (char) => char.toUpperCase());
