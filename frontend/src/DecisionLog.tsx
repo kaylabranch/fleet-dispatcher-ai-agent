@@ -30,7 +30,7 @@ export function DecisionLog({ entries }: DecisionLogProps) {
                                         </span>
                                         {isPendingApproval(decision.reasoning) && (
                                             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
-                                                Awaiting approval
+                                                Needs your decision
                                             </span>
                                         )}
                                         {approvalOutcome(decision.reasoning) && (
@@ -49,8 +49,11 @@ export function DecisionLog({ entries }: DecisionLogProps) {
                                             </span>
                                         )}
                                         {isLocalFallback(decision.reasoning) && (
-                                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-                                                Fallback
+                                            <span
+                                                title="The AI provider was unavailable, so a built-in rule made this suggestion."
+                                                className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+                                            >
+                                                Auto rule (no AI)
                                             </span>
                                         )}
                                     </div>

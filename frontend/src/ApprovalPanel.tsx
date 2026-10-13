@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { PendingApproval } from "./types";
-import { actionSummary, cleanReasoning } from "./actionLabels";
+import { actionSummary, approvalConsequence, cleanReasoning } from "./actionLabels";
 
 const API_URL = "http://localhost:8000";
 
@@ -68,6 +68,13 @@ export function ApprovalPanel({ approvals }: ApprovalPanelProps) {
                         )}
                     </div>
                     <div className="text-sm text-gray-600">Why: {cleanReasoning(approval.reasoning)}</div>
+                    <div className="mt-1 text-xs text-gray-500">
+                        {approvalConsequence(
+                            approval.action,
+                            approval.payload.robot_id as string | undefined,
+                            approval.payload.task_id as string | undefined,
+                        )}
+                    </div>
                     <details className="mt-2">
                         <summary className="cursor-pointer text-xs text-gray-500">Edit details before applying</summary>
                         <textarea

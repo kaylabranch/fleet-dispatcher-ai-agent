@@ -40,7 +40,7 @@ describe("DecisionLog", () => {
         };
         render(<DecisionLog entries={[pending]} />);
         expect(screen.getByText("Send r3 to charge")).toBeInTheDocument();
-        expect(screen.getByText("Awaiting approval")).toBeInTheDocument();
+        expect(screen.getByText("Needs your decision")).toBeInTheDocument();
         expect(screen.getByText("battery low")).toBeInTheDocument();
     });
 

@@ -33,9 +33,21 @@ export function actionSummary(action: string, robotId?: string | null, taskId?: 
         case "reroute_robot":
             return `Reroute ${robotId ?? "a robot"}`;
         case "escalate_task":
-            return `Escalate task ${taskId ?? "?"} to a human`;
+            return `Flag task ${taskId ?? "?"} as failed for human follow-up`;
         default:
             return [actionLabel(action), robotId, taskId].filter(Boolean).join(" · ");
+    }
+}
+
+/** Explains in plain language what approving an action will do, so supervisors know the real-world effect. */
+export function approvalConsequence(action: string, robotId?: string | null, taskId?: string | null): string {
+    switch (action) {
+        case "escalate_task":
+            return `Approve: task ${taskId ?? "?"} is marked failed and handed to a person to deal with (reschedule it or notify the customer). Reject: it stays in the queue.`;
+        case "recall_to_charge":
+            return `Approve: ${robotId ?? "the robot"} stops what it's doing and goes to charge; any job it was carrying returns to the queue. Reject: it keeps going.`;
+        default:
+            return "Approve to carry this out, or reject to leave things as they are.";
     }
 }
 

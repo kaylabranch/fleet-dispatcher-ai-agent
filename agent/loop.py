@@ -141,8 +141,8 @@ class AgentLoop:
                 decisions.append(
                     self._queue_fallback_approval(
                         action="recall_to_charge",
-                        payload={"robot_id": robot.id, "reasoning": "[local fallback] battery is below the safe threshold"},
-                        reasoning=f"[local fallback] {robot.id} battery is {robot.battery:.1f}%; supervisor review required before charging",
+                        payload={"robot_id": robot.id, "reasoning": "[local fallback] battery is low"},
+                        reasoning=f"[local fallback] {robot.id}'s battery is down to {robot.battery:.0f}% and it has no job right now.",
                     )
                 )
 
@@ -157,7 +157,7 @@ class AgentLoop:
                     self._queue_fallback_approval(
                         action="escalate_task",
                         payload={"task_id": task.id, "reasoning": "[local fallback] deadline has passed"},
-                        reasoning=f"[local fallback] task {task.id} deadline has passed; supervisor review required",
+                        reasoning=f"[local fallback] Task {task.id} is past its deadline, so it can no longer be delivered on time.",
                     )
                 )
 
