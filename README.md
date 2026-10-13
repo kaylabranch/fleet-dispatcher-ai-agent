@@ -27,9 +27,10 @@ frontend/    # React + Vite + Tailwind dashboard
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
-Copy-Item .env.example .env   # then fill in GEMINI_API_KEY
+Copy-Item .env.example .env
 ```
 
+In the new .env file, add your Gemini API key.
 Run the API server (starts the tick loop + WebSocket push):
 
 ```powershell
