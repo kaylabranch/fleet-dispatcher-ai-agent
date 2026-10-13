@@ -245,6 +245,10 @@ Backend:
 .\.venv\Scripts\python.exe -m pytest
 ```
 
+Run that command from the repository root. It intentionally uses the virtual-environment
+interpreter so it works even when PowerShell has not activated `.venv`; a bare `pytest` command
+is not available unless `.venv\Scripts` is on `PATH`.
+
 Frontend:
 
 ```powershell

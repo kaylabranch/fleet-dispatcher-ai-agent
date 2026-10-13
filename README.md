@@ -39,8 +39,12 @@ uvicorn server.main:app --reload
 Run the test suite:
 
 ```powershell
-pytest
+.\.venv\Scripts\python.exe -m pytest
 ```
+
+Use the virtual-environment interpreter explicitly when running from the repository root. A bare
+`pytest` command only works after `.venv\Scripts` has been added to the current PowerShell `PATH`
+by activating the environment with `.venv\Scripts\Activate.ps1`.
 
 ## Frontend setup
 
