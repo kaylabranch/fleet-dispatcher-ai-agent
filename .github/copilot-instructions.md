@@ -23,7 +23,7 @@ A simulated fleet-dispatch system where an LLM agent manages a fleet of delivery
 | Layer | Choice | Why |
 |---|---|---|
 | Runtime | Python 3.11+ | Also doubles as practice toward the PCPP1 cert |
-| Agent LLM | Claude (Anthropic Python SDK, tool use) | Native tool-use client, structured outputs |
+| Agent LLM | Google Gemini (Google Gen AI Python SDK, function calling) | Free-tier-friendly function calling with structured tool inputs |
 | Simulator | Plain Python module, Pydantic models | Pydantic gives schema validation for free, including on agent tool-call inputs |
 | Persistence | SQLite (`sqlite3` or `sqlmodel`) or JSON file | Enough for task/decision history at this scale |
 | API layer | FastAPI | Async, native WebSocket support, auto-generated `/docs` from the same Pydantic models |
@@ -174,7 +174,7 @@ Static, clean data only exercises assignment logic. The scenarios below exercise
 every tick (e.g. every 5s of sim time, or on event/user input):
   1. Snapshot: serialize robots + tasks + recent events (last ~10)
   2. Build prompt: system instructions + tool definitions + snapshot + any pending user message
-  3. Call Claude with tool use enabled
+  3. Call Gemini with function calling enabled
   4. Execute returned tool calls against the simulator
   5. Simulator advances world state (movement, battery drain, task completion)
   6. Append decision + reasoning to the log
@@ -248,7 +248,7 @@ fleet-agent/
 ## 9. Build Order
 
 1. **Static simulator** — hardcoded robots/tasks, no agent yet; verify tick/movement/battery logic
-2. **One-shot agent call** — feed a snapshot to Claude, get back tool calls, apply manually (no loop)
+2. **One-shot agent call** — feed a snapshot to Gemini, get back function calls, apply manually (no loop)
 3. **Loop it** — automate the tick cycle, add logging
 4. **Add non-happy-path events** — start with `calm_day`, layer in `chaos_day` categories one at a time
 5. **Add reasoning trace output** — structured decisions + risks as shown above

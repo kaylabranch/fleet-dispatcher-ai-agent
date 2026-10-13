@@ -74,7 +74,19 @@ export interface FleetSnapshot {
     recent_events: FleetEvent[];
 }
 
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+
+export interface PendingApproval {
+    id: string;
+    action: string;
+    payload: Record<string, unknown>;
+    reasoning: string;
+    created_at: string;
+    status: ApprovalStatus;
+}
+
 export interface FleetUpdateMessage {
     fleet: FleetSnapshot;
-    decision: DecisionLogEntry;
+    decision: DecisionLogEntry | null;
+    approvals: PendingApproval[];
 }

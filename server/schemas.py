@@ -40,3 +40,9 @@ class PendingApprovalsResponse(BaseModel):
     """Actions currently awaiting human sign-off."""
 
     approvals: list[PendingApproval]
+
+
+class QueryRequest(BaseModel):
+    """A read-only hypothetical question about current fleet capacity."""
+
+    hypothetical_change: str

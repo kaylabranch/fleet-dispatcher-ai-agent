@@ -5,12 +5,16 @@ from __future__ import annotations
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
+from google.genai import errors
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from server.routes import router
 from server.state import create_app_state, get_app_state
+from simulator.models import DecisionLogEntry
 
 load_dotenv()
 
@@ -24,11 +28,20 @@ async def _tick_forever() -> None:
         await asyncio.sleep(TICK_INTERVAL_SECONDS)
         message = state.pending_user_message
         state.pending_user_message = None
-        entry = state.loop.run_cycle(pending_user_message=message)
+        try:
+            entry = state.loop.run_cycle(pending_user_message=message)
+        except (ValueError, TimeoutError, errors.APIError) as exc:
+            entry = DecisionLogEntry(
+                cycle=state.loop.world.cycle,
+                timestamp=datetime.now(timezone.utc),
+                flagged_risks=[f"agent cycle failed: {exc}"],
+            )
+            state.loop.decision_log.append(entry)
         await state.connection_manager.broadcast(
             {
                 "fleet": state.loop.world.get_snapshot(),
                 "decision": entry.model_dump(),
+                "approvals": list(state.loop.pending_approvals.values()),
             }
         )
 
@@ -42,6 +55,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Fleet Dispatch Agent", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(router)
 
 
@@ -50,6 +69,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     """Streams fleet state + decision log updates to connected dashboard clients."""
     state = get_app_state()
     await state.connection_manager.connect(websocket)
+    await websocket.send_json(
+        {
+            "fleet": state.loop.world.get_snapshot(),
+            "decision": None,
+            "approvals": list(state.loop.pending_approvals.values()),
+        }
+    )
     try:
         while True:
             await websocket.receive_text()

@@ -10,7 +10,9 @@ from server.schemas import (
     FleetStatusResponse,
     InterventionRequest,
     PendingApprovalsResponse,
+    QueryRequest,
 )
+from agent.tools import SimulateScenarioInput, ToolHandlers
 from server.state import get_app_state
 
 router = APIRouter()
@@ -55,3 +57,14 @@ async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequ
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"status": request.action}
+
+
+@router.post("/query")
+async def post_query(request: QueryRequest) -> dict:
+    """Return a read-only what-if summary without changing simulator state."""
+    state = get_app_state()
+    payload = SimulateScenarioInput(
+        hypothetical_change=request.hypothetical_change,
+        reasoning="Human requested a read-only what-if query.",
+    )
+    return ToolHandlers(state.loop.world).simulate_scenario(payload)

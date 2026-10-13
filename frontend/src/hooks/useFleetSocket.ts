@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DecisionLogEntry, FleetSnapshot, FleetUpdateMessage } from "../types";
+import type { DecisionLogEntry, FleetSnapshot, FleetUpdateMessage, PendingApproval } from "../types";
 
 const WEBSOCKET_URL = "ws://localhost:8000/ws";
 
@@ -7,6 +7,7 @@ const WEBSOCKET_URL = "ws://localhost:8000/ws";
 export function useFleetSocket() {
     const [fleet, setFleet] = useState<FleetSnapshot | null>(null);
     const [decisions, setDecisions] = useState<DecisionLogEntry[]>([]);
+    const [approvals, setApprovals] = useState<PendingApproval[]>([]);
     const [connected, setConnected] = useState(false);
     const socketRef = useRef<WebSocket | null>(null);
 
@@ -19,11 +20,14 @@ export function useFleetSocket() {
         socket.onmessage = (event) => {
             const message: FleetUpdateMessage = JSON.parse(event.data);
             setFleet(message.fleet);
-            setDecisions((prev) => [...prev, message.decision]);
+            setApprovals(message.approvals ?? []);
+            if (message.decision) {
+                setDecisions((prev) => [...prev, message.decision as DecisionLogEntry]);
+            }
         };
 
         return () => socket.close();
     }, []);
 
-    return { fleet, decisions, connected };
+    return { fleet, decisions, approvals, connected };
 }

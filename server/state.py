@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import WebSocket
+from starlette.websockets import WebSocketDisconnect
 
 from agent.client import AgentClient
 from agent.loop import AgentLoop
@@ -32,7 +33,10 @@ class ConnectionManager:
 
     async def broadcast(self, message: dict) -> None:
         for connection in list(self.active_connections):
-            await connection.send_json(message)
+            try:
+                await connection.send_json(message)
+            except (WebSocketDisconnect, RuntimeError, OSError):
+                self.disconnect(connection)
 
 
 @dataclass
