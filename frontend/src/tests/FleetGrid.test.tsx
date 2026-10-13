@@ -10,6 +10,7 @@ const robot: Robot = {
     battery: 92,
     current_task_id: null,
     speed: 1,
+    route: [],
     last_reported_at: null,
 };
 

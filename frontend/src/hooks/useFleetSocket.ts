@@ -9,29 +9,52 @@ export function useFleetSocket() {
     const [decisions, setDecisions] = useState<DecisionLogEntry[]>([]);
     const [approvals, setApprovals] = useState<PendingApproval[]>([]);
     const [connected, setConnected] = useState(false);
+    const [connectionError, setConnectionError] = useState("");
     const [status, setStatus] = useState<SimulationStatus>("stopped");
     const [scenario, setScenario] = useState("calm_day");
     const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        const socket = new WebSocket(WEBSOCKET_URL);
-        socketRef.current = socket;
+        let reconnectTimer: number | undefined;
+        let disposed = false;
 
-        socket.onopen = () => setConnected(true);
-        socket.onclose = () => setConnected(false);
-        socket.onmessage = (event) => {
-            const message: FleetUpdateMessage = JSON.parse(event.data);
-            setFleet(message.fleet);
-            setApprovals(message.approvals ?? []);
-            setStatus(message.status);
-            setScenario(message.scenario);
-            if (message.decision) {
-                setDecisions((prev) => [...prev, message.decision as DecisionLogEntry]);
-            }
+        function connect() {
+            const socket = new WebSocket(WEBSOCKET_URL);
+            socketRef.current = socket;
+
+            socket.onopen = () => {
+                setConnected(true);
+                setConnectionError("");
+            };
+            socket.onerror = () => {
+                setConnectionError("Backend connection failed. Start the FastAPI server on port 8000.");
+            };
+            socket.onclose = () => {
+                setConnected(false);
+                if (!disposed) {
+                    reconnectTimer = window.setTimeout(connect, 2000);
+                }
+            };
+            socket.onmessage = (event) => {
+                const message: FleetUpdateMessage = JSON.parse(event.data);
+                setFleet(message.fleet);
+                setApprovals(message.approvals ?? []);
+                setStatus(message.status);
+                setScenario(message.scenario);
+                if (message.decision) {
+                    setDecisions((prev) => [...prev, message.decision as DecisionLogEntry]);
+                }
+            };
+        }
+
+        connect();
+
+        return () => {
+            disposed = true;
+            if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+            socketRef.current?.close();
         };
-
-        return () => socket.close();
     }, []);
 
-    return { fleet, decisions, approvals, connected, status, scenario };
+    return { fleet, decisions, approvals, connected, status, scenario, connectionError };
 }

@@ -4,6 +4,7 @@ import { ChatInput } from "./ChatInput";
 import { ApprovalPanel } from "./ApprovalPanel";
 import { QueryPanel } from "./QueryPanel";
 import { SimulationControls } from "./SimulationControls";
+import { OperatorGuide } from "./OperatorGuide";
 import { useFleetSocket } from "./hooks/useFleetSocket";
 
 /** Top-level dashboard: fleet grid, live decision log, and the intervention chat input. */
@@ -15,6 +16,7 @@ export function Dashboard() {
         connected,
         status = "stopped",
         scenario = "calm_day",
+        connectionError,
     } = useFleetSocket();
 
     return (
@@ -25,8 +27,19 @@ export function Dashboard() {
                     {connected ? "● connected" : "○ disconnected"}
                 </span>
             </header>
+            <p className="text-sm text-gray-600">
+                Cycle {fleet?.cycle ?? 0} · {scenario.replace("_", " ")} · Select a scenario and click Start to begin.
+            </p>
+            {connectionError && (
+                <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+                    {connectionError} From the repository root, run
+                    {" "}
+                    <code>.\.venv\Scripts\python.exe -m uvicorn server.main:app --reload</code>.
+                </p>
+            )}
 
             <SimulationControls status={status} scenario={scenario} />
+            <OperatorGuide status={status} />
 
             <div className="grid gap-6 md:grid-cols-2">
                 <section>

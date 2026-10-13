@@ -18,6 +18,7 @@ export interface Robot {
     battery: number;
     current_task_id: string | null;
     speed: number;
+    route: Location[];
     last_reported_at: string | null;
 }
 

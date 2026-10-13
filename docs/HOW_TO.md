@@ -143,6 +143,7 @@ The dashboard is the operator's starting point:
 6. Click **Stop** to stop automatic cycles without changing the current state.
 7. Click **Reset** to load the selected scenario from cycle zero.
 
+The first cycle starts immediately after **Start**; subsequent cycles run at the configured interval.
 The cycle number, fleet grid, events, decisions, and pending approvals update as the simulation
 runs. Use **Intervene** while running or paused to queue a human instruction for the next cycle.
 
@@ -254,6 +255,10 @@ Use the Vite origin shown in the browser, normally `http://localhost:5173`. The 
 ### No decisions appear
 
 Check the Uvicorn terminal for Gemini API or quota errors. The simulator still streams an initial fleet snapshot when the dashboard connects, but decisions require a successful agent cycle.
+
+If Gemini is temporarily unavailable, the dashboard will show the agent-cycle failure in the
+decision log while the simulator continues advancing its physical movement. Fix the
+`GEMINI_API_KEY`, model name, network connection, or quota issue and let the next cycle retry.
 
 ### A scenario change had no effect
 

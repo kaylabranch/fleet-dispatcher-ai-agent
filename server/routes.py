@@ -51,6 +51,8 @@ async def control_simulation(request: SimulationControlRequest) -> SimulationSta
         state.status = "paused"
     elif request.action == "stop":
         state.status = "stopped"
+    if state.wake_event is not None:
+        state.wake_event.set()
     response = SimulationStatusResponse(
         status=state.status,
         scenario=state.scenario_name,

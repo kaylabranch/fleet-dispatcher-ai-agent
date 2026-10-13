@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional
@@ -47,6 +48,7 @@ class AppState:
     pending_user_message: Optional[str] = None
     status: Literal["stopped", "running", "paused"] = "stopped"
     scenario_name: str = "calm_day"
+    wake_event: asyncio.Event | None = None
 
     def reset_simulation(self, scenario_name: str | None = None) -> None:
         """Replace the current simulation with a fresh world for a selected scenario."""

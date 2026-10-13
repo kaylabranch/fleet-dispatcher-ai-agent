@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
+import httpx
 from google.genai import errors
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -25,14 +26,24 @@ async def _tick_forever() -> None:
     """Background task: runs one agent cycle every TICK_INTERVAL_SECONDS and broadcasts state."""
     state = get_app_state()
     while True:
-        await asyncio.sleep(TICK_INTERVAL_SECONDS)
+        if state.wake_event is None:
+            state.wake_event = asyncio.Event()
+        try:
+            await asyncio.wait_for(state.wake_event.wait(), timeout=TICK_INTERVAL_SECONDS)
+            state.wake_event.clear()
+        except asyncio.TimeoutError:
+            pass
         if state.status != "running":
             continue
         message = state.pending_user_message
         state.pending_user_message = None
         try:
-            entry = state.loop.run_cycle(pending_user_message=message)
-        except (ValueError, TimeoutError, errors.APIError) as exc:
+            entry = await asyncio.to_thread(
+                state.loop.run_cycle,
+                pending_user_message=message,
+            )
+        except (ValueError, TimeoutError, errors.APIError, httpx.HTTPError, OSError) as exc:
+            state.loop.world.tick()
             entry = DecisionLogEntry(
                 cycle=state.loop.world.cycle,
                 timestamp=datetime.now(timezone.utc),
@@ -53,6 +64,7 @@ async def _tick_forever() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_app_state()
+    get_app_state().wake_event = asyncio.Event()
     tick_task = asyncio.create_task(_tick_forever())
     yield
     tick_task.cancel()
