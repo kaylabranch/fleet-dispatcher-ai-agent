@@ -79,6 +79,7 @@ Useful checks:
 
 The backend waits for the dashboard's **Start** command, then runs an agent cycle every
 `TICK_INTERVAL_SECONDS` seconds. The demo defaults to 2 seconds between cycles after the previous cycle finishes. The simulator advances robot movement at the start of each cycle, before waiting for Gemini, so a slow provider cannot freeze the map. Each Gemini request is bounded by `GEMINI_TIMEOUT_SECONDS` (5 seconds by default), spaced by `GEMINI_MIN_REQUEST_INTERVAL_SECONDS` (1 second), and attempted once. Each cycle allows at most three agent turns including follow-ups. Each cycle generates configured events, sends a snapshot to
+After a Gemini failure, a circuit breaker uses local fallback dispatch for the rest of the run; Reset clears the breaker and permits a fresh provider attempt.
 Gemini, validates returned function calls, applies permitted actions, advances the simulator, and
 broadcasts the result over WebSocket.
 

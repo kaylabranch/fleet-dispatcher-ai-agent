@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal, Optional
 
 from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
 from starlette.websockets import WebSocketDisconnect
 
 from agent.client import AgentClient
@@ -42,9 +43,10 @@ class ConnectionManager:
             message["status"],
             len(self.active_connections),
         )
+        payload = jsonable_encoder(message)
         for connection in list(self.active_connections):
             try:
-                await connection.send_json(message)
+                await connection.send_json(payload)
             except (WebSocketDisconnect, RuntimeError, OSError):
                 logger.warning("Removing failed WebSocket during broadcast")
                 self.disconnect(connection)
@@ -61,6 +63,7 @@ class AppState:
     scenario_name: str = "calm_day"
     wake_event: asyncio.Event | None = None
     last_error: str | None = None
+    agent_disabled: bool = False
 
     def reset_simulation(self, scenario_name: str | None = None) -> None:
         """Replace the current simulation with a fresh world for a selected scenario."""
@@ -73,6 +76,7 @@ class AppState:
         self.pending_user_message = None
         self.status = "stopped"
         self.last_error = None
+        self.agent_disabled = False
         logger.info("Simulation reset (scenario=%s, cycle=%s)", selected_scenario, self.loop.world.cycle)
 
 

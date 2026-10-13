@@ -1,4 +1,4 @@
-"""FastAPI app: REST routes, WebSocket push, and the background tick loop."""
+﻿"""FastAPI app: REST routes, WebSocket push, and the background tick loop."""
 
 from __future__ import annotations
 
@@ -36,18 +36,32 @@ async def _tick_forever() -> None:
         if state.status != "running":
             logger.info("Skipping cycle because simulation status is %s", state.status)
             continue
-        cycle_started = time.perf_counter()
-        next_cycle = state.loop.world.cycle + 1
-        logger.info(
-            "Starting simulation cycle %s (scenario=%s, pending_message=%s, connections=%s)",
-            next_cycle,
-            state.scenario_name,
-            bool(state.pending_user_message),
-            len(state.connection_manager.active_connections),
-        )
-        message = state.pending_user_message
-        state.pending_user_message = None
-        cycle_error: str | None = None
+        try:
+            await _run_one_cycle(state)
+        except Exception:
+            logger.exception("Scheduler cycle failed; scheduler keeps running")
+
+
+async def _run_one_cycle(state) -> None:
+    """Run a single agent cycle and broadcast the result to connected dashboards."""
+    cycle_started = time.perf_counter()
+    next_cycle = state.loop.world.cycle + 1
+    logger.info(
+        "Starting simulation cycle %s (scenario=%s, pending_message=%s, connections=%s)",
+        next_cycle,
+        state.scenario_name,
+        bool(state.pending_user_message),
+        len(state.connection_manager.active_connections),
+    )
+    message = state.pending_user_message
+    state.pending_user_message = None
+    cycle_error: str | None = None
+    if state.agent_disabled:
+        state.loop.world.tick()
+        entry = state.loop.run_fallback_cycle("provider disabled after previous failure")
+        cycle_error = state.last_error or "Gemini/agent provider disabled after a previous failure."
+        logger.warning("Cycle %s used local fallback circuit breaker", entry.cycle)
+    else:
         try:
             entry = await asyncio.to_thread(
                 state.loop.run_cycle,
@@ -56,35 +70,36 @@ async def _tick_forever() -> None:
         except Exception as exc:
             logger.exception("Agent cycle failed after simulator tick: %s", exc)
             cycle_error = f"Gemini/agent failure: {exc}"
+            state.agent_disabled = True
             entry = state.loop.run_fallback_cycle(str(exc))
             logger.error("Cycle %s used local fallback: %s", entry.cycle, cycle_error)
-        state.last_error = cycle_error
-        snapshot = state.loop.world.get_snapshot()
-        logger.info(
-            "Cycle %s state after agent: robots=%s, tasks=%s, events=%s",
-            entry.cycle,
-            _robot_positions(snapshot),
-            len(snapshot["tasks"]),
-            len(snapshot["recent_events"]),
-        )
-        logger.info("Broadcasting cycle %s to %s connection(s)", entry.cycle, len(state.connection_manager.active_connections))
-        await state.connection_manager.broadcast(
-            {
-                "fleet": snapshot,
-                "decision": entry.model_dump(),
-                "approvals": list(state.loop.pending_approvals.values()),
-                "status": state.status,
-                "scenario": state.scenario_name,
-                "error": cycle_error,
-            }
-        )
-        logger.info(
-            "Completed simulation cycle %s (decisions=%s, approvals=%s)",
-            entry.cycle,
-            len(entry.decisions),
-            len(state.loop.pending_approvals),
-        )
-        logger.info("Cycle %s total duration %.3fs", entry.cycle, time.perf_counter() - cycle_started)
+    state.last_error = cycle_error
+    snapshot = state.loop.world.get_snapshot()
+    logger.info(
+        "Cycle %s state after agent: robots=%s, tasks=%s, events=%s",
+        entry.cycle,
+        _robot_positions(snapshot),
+        len(snapshot["tasks"]),
+        len(snapshot["recent_events"]),
+    )
+    logger.info("Broadcasting cycle %s to %s connection(s)", entry.cycle, len(state.connection_manager.active_connections))
+    await state.connection_manager.broadcast(
+        {
+            "fleet": snapshot,
+            "decision": entry.model_dump(),
+            "approvals": list(state.loop.pending_approvals.values()),
+            "status": state.status,
+            "scenario": state.scenario_name,
+            "error": cycle_error,
+        }
+    )
+    logger.info(
+        "Completed simulation cycle %s (decisions=%s, approvals=%s)",
+        entry.cycle,
+        len(entry.decisions),
+        len(state.loop.pending_approvals),
+    )
+    logger.info("Cycle %s total duration %.3fs", entry.cycle, time.perf_counter() - cycle_started)
 
 
 def _robot_positions(snapshot: dict) -> str:

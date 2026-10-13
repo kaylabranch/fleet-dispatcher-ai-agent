@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, Protocol
 
@@ -110,6 +111,33 @@ class AgentLoop:
         """Apply safe local dispatch decisions when the configured provider is unavailable."""
         decisions: list[Decision] = []
         flagged_risks = [f"Gemini unavailable; local fallback dispatch used: {reason}"]
+        for robot in self.world.robots.values():
+            if robot.status == "idle" and robot.battery <= 20 and not self._has_pending_approval(
+                "recall_to_charge", robot.id
+            ):
+                decisions.append(
+                    self._queue_fallback_approval(
+                        action="recall_to_charge",
+                        payload={"robot_id": robot.id, "reasoning": "[local fallback] battery is below the safe threshold"},
+                        reasoning=f"[local fallback] {robot.id} battery is {robot.battery:.1f}%; supervisor review required before charging",
+                    )
+                )
+
+        for task in self.world.tasks.values():
+            if (
+                task.status == "pending"
+                and task.deadline is not None
+                and task.deadline <= self.world.current_time
+                and not self._has_pending_approval("escalate_task", task.id)
+            ):
+                decisions.append(
+                    self._queue_fallback_approval(
+                        action="escalate_task",
+                        payload={"task_id": task.id, "reasoning": "[local fallback] deadline has passed"},
+                        reasoning=f"[local fallback] task {task.id} deadline has passed; supervisor review required",
+                    )
+                )
+
         priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
         pending_tasks = sorted(
             (task for task in self.world.tasks.values() if task.status == "pending"),
@@ -148,6 +176,34 @@ class AgentLoop:
             reason,
         )
         return entry
+
+    def _has_pending_approval(self, action: str, subject_id: str) -> bool:
+        """Return whether fallback already queued an approval for a robot or task."""
+        return any(
+            approval.action == action
+            and (
+                approval.payload.get("robot_id") == subject_id
+                or approval.payload.get("task_id") == subject_id
+            )
+            for approval in self.pending_approvals.values()
+        )
+
+    def _queue_fallback_approval(self, action: str, payload: dict, reasoning: str) -> Decision:
+        """Create a human approval for a fallback action without applying it automatically."""
+        approval_id = f"fallback-{uuid.uuid4().hex}"
+        self.pending_approvals[approval_id] = PendingApproval(
+            id=approval_id,
+            action=action,
+            payload=payload,
+            reasoning=reasoning,
+            created_at=_now(),
+        )
+        return Decision(
+            action=action,
+            robot_id=payload.get("robot_id"),
+            task_id=payload.get("task_id"),
+            reasoning=f"[pending approval] {reasoning}",
+        )
 
     def _apply_tool_call(self, call: ToolCall) -> tuple[Decision | None, dict]:
         """Validate, apply, and serialize the outcome of one tool call."""

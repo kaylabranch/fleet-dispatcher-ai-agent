@@ -15,7 +15,8 @@ from google.genai import types
 from agent.tools import TOOL_SCHEMAS
 
 DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-GEMINI_TIMEOUT_SECONDS = float(os.environ.get("GEMINI_TIMEOUT_SECONDS", "5"))
+GEMINI_MIN_TIMEOUT_SECONDS = 10.0  # the Gemini API rejects shorter request deadlines
+GEMINI_TIMEOUT_SECONDS = max(float(os.environ.get("GEMINI_TIMEOUT_SECONDS", "15")), GEMINI_MIN_TIMEOUT_SECONDS)
 GEMINI_MIN_REQUEST_INTERVAL_SECONDS = float(os.environ.get("GEMINI_MIN_REQUEST_INTERVAL_SECONDS", "1"))
 logger = logging.getLogger("fleet_dispatch")
 
