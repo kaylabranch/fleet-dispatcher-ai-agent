@@ -75,8 +75,6 @@ Select the scenario from the dashboard before starting the simulation:
 - `deadline_crunch` — multiple tight/expired deadlines, tests escalation
 - `sensor_noise` — isolated data-quality issues
 
-The backend starts stopped. Open the dashboard, select a scenario, and click **Start**.
-
 ## Interaction modes
 
 - **Observer** — dashboard streams fleet state + decision log automatically
