@@ -176,3 +176,27 @@ def test_run_cycle_skips_api_call_when_nothing_to_decide(sample_world: World) ->
     loop.run_cycle()
 
     assert client.call_count == 0
+
+
+def test_describe_agent_failure_gives_plain_causes() -> None:
+    from agent.client import describe_agent_failure
+
+    class ApiError(Exception):
+        def __init__(self, code: int, message: str) -> None:
+            super().__init__(message)
+            self.code = code
+
+    assert "API key" in describe_agent_failure(ValueError("GEMINI_API_KEY must be set"))
+    assert "rate limit" in describe_agent_failure(ApiError(429, "RESOURCE_EXHAUSTED"))
+    assert "invalid" in describe_agent_failure(ApiError(400, "INVALID_ARGUMENT deadline too short"))
+    assert "timed out" in describe_agent_failure(TimeoutError("request timed out"))
+    assert "RuntimeError" in describe_agent_failure(RuntimeError("boom"))
+
+
+def test_fallback_cycle_explains_why_the_ai_was_skipped(sample_world: World) -> None:
+    loop = AgentLoop(world=sample_world, agent_client=FakeAgentClient(scripted_calls=[]), event_generator=_quiet_event_generator())
+
+    entry = loop.run_fallback_cycle("the API rate limit or quota was hit")
+
+    assert "rate limit or quota" in entry.flagged_risks[0]
+    assert entry.flagged_risks[0].startswith("AI provider unavailable")

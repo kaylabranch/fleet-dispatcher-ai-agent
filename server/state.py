@@ -64,6 +64,7 @@ class AppState:
     wake_event: asyncio.Event | None = None
     last_error: str | None = None
     agent_disabled: bool = False
+    agent_failure_reason: str = "unknown error"
 
     def reset_simulation(self, scenario_name: str | None = None) -> None:
         """Replace the current simulation with a fresh world for a selected scenario."""
@@ -77,6 +78,7 @@ class AppState:
         self.status = "stopped"
         self.last_error = None
         self.agent_disabled = False
+        self.agent_failure_reason = "unknown error"
         logger.info("Simulation reset (scenario=%s, cycle=%s)", selected_scenario, self.loop.world.cycle)
 
 

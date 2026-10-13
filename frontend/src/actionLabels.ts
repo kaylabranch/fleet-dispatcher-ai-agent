@@ -65,8 +65,7 @@ export function isLocalFallback(text: string): boolean {
     return /\[local fallback\]|local fallback/i.test(text);
 }
 
-/** Shortens noisy provider errors ("Gemini unavailable; local fallback dispatch used: ...") for display. */
-export function cleanRisk(risk: string): string {
-    if (/gemini unavailable/i.test(risk)) return "AI provider unavailable — using built-in fallback dispatch.";
-    return risk;
+/** Risks that repeat unchanged every cycle while the AI is down; shown once, not on every cycle. */
+export function isRepeatingNotice(risk: string): boolean {
+    return /^AI provider unavailable/i.test(risk);
 }

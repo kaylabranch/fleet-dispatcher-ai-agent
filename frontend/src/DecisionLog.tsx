@@ -1,13 +1,24 @@
 import type { DecisionLogEntry } from "./types";
-import { actionSummary, approvalOutcome, cleanReasoning, cleanRisk, isLocalFallback, isPendingApproval } from "./actionLabels";
+import { actionSummary, approvalOutcome, cleanReasoning, isLocalFallback, isPendingApproval, isRepeatingNotice } from "./actionLabels";
 
 interface DecisionLogProps {
     entries: DecisionLogEntry[];
 }
 
+/** Drops a repeating notice when the previous entry already showed the identical one. */
+function withoutRepeatedNotices(entries: DecisionLogEntry[]): DecisionLogEntry[] {
+    let lastNotices = new Set<string>();
+    return entries.map((entry) => {
+        const notices = new Set(entry.flagged_risks.filter(isRepeatingNotice));
+        const flagged_risks = entry.flagged_risks.filter((risk) => !(isRepeatingNotice(risk) && lastNotices.has(risk)));
+        if (entry.decisions.length > 0 || notices.size > 0) lastNotices = notices;
+        return { ...entry, flagged_risks };
+    });
+}
+
 /** Streams the agent's decision history, most recent cycle first, skipping cycles with nothing to report. */
 export function DecisionLog({ entries }: DecisionLogProps) {
-    const visible = [...entries]
+    const visible = withoutRepeatedNotices(entries)
         .reverse()
         .filter((entry) => entry.decisions.length > 0 || entry.flagged_risks.length > 0);
 
@@ -15,7 +26,7 @@ export function DecisionLog({ entries }: DecisionLogProps) {
         <div className="max-h-96 w-full max-w-xl overflow-y-auto rounded border border-gray-300">
             {visible.length === 0 && <p className="p-4 text-sm text-gray-500">No decisions logged yet.</p>}
             {visible.map((entry, entryIndex) => {
-                const risks = [...new Set(entry.flagged_risks.map(cleanRisk))];
+                const risks = [...new Set(entry.flagged_risks)];
                 return (
                     <div key={`${entry.cycle}-${entry.timestamp}-${entryIndex}`} className="border-b border-gray-200 p-3 last:border-b-0">
                         <div className="text-xs font-semibold text-gray-500">

@@ -21,6 +21,27 @@ GEMINI_MIN_REQUEST_INTERVAL_SECONDS = float(os.environ.get("GEMINI_MIN_REQUEST_I
 logger = logging.getLogger("fleet_dispatch")
 
 
+def describe_agent_failure(exc: Exception) -> str:
+    """Turn an AI provider exception into a short, human-readable cause."""
+    text = str(exc)
+    code = getattr(exc, "code", None)
+    if isinstance(exc, ValueError) and "GEMINI_API_KEY" in text:
+        return "no API key is configured (set GEMINI_API_KEY in .env)"
+    if code in (401, 403) or "API key" in text or "PERMISSION_DENIED" in text:
+        return "the API key was rejected (check GEMINI_API_KEY)"
+    if code == 429 or "RESOURCE_EXHAUSTED" in text:
+        return "the API rate limit or quota was hit"
+    if code == 404 or "NOT_FOUND" in text:
+        return "the configured model was not found (check GEMINI_MODEL)"
+    if code == 400 or "INVALID_ARGUMENT" in text:
+        return "the provider rejected the request as invalid"
+    if isinstance(code, int) and code >= 500:
+        return "the provider had a server error"
+    if "timeout" in text.lower() or "timed out" in text.lower():
+        return "the request timed out"
+    return f"unexpected error ({type(exc).__name__})"
+
+
 @dataclass
 class ToolCall:
     """A single function invocation Gemini requested, prior to Pydantic validation."""

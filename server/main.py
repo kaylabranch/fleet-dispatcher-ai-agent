@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent.client import describe_agent_failure
 from server.routes import router
 from server.state import create_app_state, get_app_state
 
@@ -58,8 +59,8 @@ async def _run_one_cycle(state) -> None:
     cycle_error: str | None = None
     if state.agent_disabled:
         state.loop.world.tick()
-        entry = state.loop.run_fallback_cycle("provider disabled after previous failure")
-        cycle_error = state.last_error or "Gemini/agent provider disabled after a previous failure."
+        entry = state.loop.run_fallback_cycle(state.agent_failure_reason)
+        cycle_error = state.last_error or f"AI provider unavailable: {state.agent_failure_reason}"
         logger.warning("Cycle %s used local fallback circuit breaker", entry.cycle)
     else:
         try:
@@ -69,9 +70,10 @@ async def _run_one_cycle(state) -> None:
             )
         except Exception as exc:
             logger.exception("Agent cycle failed after simulator tick: %s", exc)
-            cycle_error = f"Gemini/agent failure: {exc}"
+            state.agent_failure_reason = describe_agent_failure(exc)
+            cycle_error = f"AI provider unavailable: {state.agent_failure_reason}"
             state.agent_disabled = True
-            entry = state.loop.run_fallback_cycle(str(exc))
+            entry = state.loop.run_fallback_cycle(state.agent_failure_reason)
             logger.error("Cycle %s used local fallback: %s", entry.cycle, cycle_error)
     state.last_error = cycle_error
     snapshot = state.loop.world.get_snapshot()

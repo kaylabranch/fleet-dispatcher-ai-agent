@@ -69,10 +69,24 @@ describe("DecisionLog", () => {
         expect(screen.getByText("don't use r5 today")).toBeInTheDocument();
     });
 
+    it("shows why the AI is unavailable once, not on every cycle", () => {
+        const notice = "AI provider unavailable: the API rate limit or quota was hit. Built-in rules are making the dispatch decisions until the simulation is reset.";
+        const make = (cycle: number): DecisionLogEntry => ({
+            cycle,
+            timestamp: "2026-09-21T18:02:15Z",
+            decisions: [],
+            flagged_risks: [notice],
+        });
+        render(<DecisionLog entries={[make(1), make(2), make(3)]} />);
+        expect(screen.getAllByText(/rate limit or quota was hit/)).toHaveLength(1);
+        expect(screen.getByText(/cycle 1 /i)).toBeInTheDocument();
+    });
+
     it("skips cycles with no decisions or risks", () => {
         render(<DecisionLog entries={[{ cycle: 3, timestamp: "2026-09-21T18:02:15Z", decisions: [], flagged_risks: [] }]} />);
         expect(screen.getByText(/no decisions logged yet/i)).toBeInTheDocument();
     });
 });
+
 
 

@@ -133,7 +133,10 @@ class AgentLoop:
     def run_fallback_cycle(self, reason: str) -> DecisionLogEntry:
         """Apply safe local dispatch decisions when the configured provider is unavailable."""
         decisions: list[Decision] = []
-        flagged_risks = [f"Gemini unavailable; local fallback dispatch used: {reason}"]
+        flagged_risks = [
+            f"AI provider unavailable: {reason}. Built-in rules are making the dispatch decisions "
+            "until the simulation is reset."
+        ]
         for robot in self.world.robots.values():
             if robot.status == "idle" and robot.battery <= 20 and not self._has_pending_approval(
                 "recall_to_charge", robot.id
