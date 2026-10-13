@@ -114,8 +114,21 @@ async def get_pending_approvals() -> PendingApprovalsResponse:
 async def post_intervention(request: InterventionRequest) -> dict:
     """Queue a human message to be injected into the agent's next cycle."""
     state = get_app_state()
-    state.pending_user_message = request.message
+    state.pending_user_message = (
+        f"{state.pending_user_message}\n{request.message}" if state.pending_user_message else request.message
+    )
+    entry = state.loop.log_intervention(request.message)
     logger.info("Intervention queued (message_length=%s, simulation_status=%s)", len(request.message), state.status)
+    await state.connection_manager.broadcast(
+        {
+            "fleet": state.loop.world.get_snapshot(),
+            "decision": entry.model_dump(),
+            "approvals": list(state.loop.pending_approvals.values()),
+            "status": state.status,
+            "scenario": state.scenario_name,
+            "error": state.last_error,
+        }
+    )
     return {"status": "queued"}
 
 

@@ -298,6 +298,17 @@ class AgentLoop:
         approval.status = "approved"
         return self._log_approval_outcome(approval, "approved (modified)" if action == "modify" else "approved", payload_data)
 
+    def log_intervention(self, message: str) -> DecisionLogEntry:
+        """Record a human instruction in the decision log so it appears alongside the agent's responses."""
+        entry = DecisionLogEntry(
+            cycle=self.world.cycle,
+            timestamp=_now(),
+            decisions=[Decision(action="operator_message", reasoning=message)],
+            flagged_risks=[],
+        )
+        self.decision_log.append(entry)
+        return entry
+
     def _log_approval_outcome(self, approval: PendingApproval, outcome: str, payload: dict) -> DecisionLogEntry:
         """Append a decision log entry recording how a supervisor resolved an approval."""
         entry = DecisionLogEntry(

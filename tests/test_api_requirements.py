@@ -50,3 +50,20 @@ def test_approving_an_action_applies_it_and_clears_the_approval() -> None:
         outcomes = [entry.decisions[0].reasoning for entry in state.loop.decision_log[-2:]]
         assert outcomes[0].startswith("[approved]")
         assert outcomes[1].startswith("[rejected]")
+
+
+def test_intervention_is_recorded_in_the_decision_log() -> None:
+    """A human instruction must appear in the decision log and still reach the next agent cycle."""
+    from server.state import get_app_state
+
+    with TestClient(app) as client:
+        state = get_app_state()
+        state.reset_simulation("calm_day")
+
+        response = client.post("/intervene", json={"message": "don't use r5 today"})
+
+        assert response.status_code == 202
+        last = state.loop.decision_log[-1].decisions[0]
+        assert last.action == "operator_message"
+        assert last.reasoning == "don't use r5 today"
+        assert state.pending_user_message == "don't use r5 today"

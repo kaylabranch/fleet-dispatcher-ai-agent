@@ -26,6 +26,8 @@ export function actionLabel(action: string): string {
 /** Builds a one-line sentence such as "Send r3 to charge" from an action and its subjects. */
 export function actionSummary(action: string, robotId?: string | null, taskId?: string | null): string {
     switch (action) {
+        case "operator_message":
+            return "You sent an instruction";
         case "assign_task":
             return `Assign ${robotId ?? "a robot"} to task ${taskId ?? "?"}`;
         case "recall_to_charge":

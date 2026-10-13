@@ -57,9 +57,22 @@ describe("DecisionLog", () => {
         expect(screen.getAllByText("battery low")).toHaveLength(2);
     });
 
+    it("shows operator instructions as a readable entry", () => {
+        const message: DecisionLogEntry = {
+            cycle: 5,
+            timestamp: "2026-09-21T18:02:15Z",
+            decisions: [{ action: "operator_message", robot_id: null, task_id: null, reasoning: "don't use r5 today" }],
+            flagged_risks: [],
+        };
+        render(<DecisionLog entries={[message]} />);
+        expect(screen.getByText("You sent an instruction")).toBeInTheDocument();
+        expect(screen.getByText("don't use r5 today")).toBeInTheDocument();
+    });
+
     it("skips cycles with no decisions or risks", () => {
         render(<DecisionLog entries={[{ cycle: 3, timestamp: "2026-09-21T18:02:15Z", decisions: [], flagged_risks: [] }]} />);
         expect(screen.getByText(/no decisions logged yet/i)).toBeInTheDocument();
     });
 });
+
 
