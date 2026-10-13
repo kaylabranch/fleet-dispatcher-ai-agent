@@ -64,12 +64,14 @@ model availability. The default model is `gemini-2.5-flash`; override it with `G
 
 ## Scenarios
 
-Set `SCENARIO` in `.env` to one of the fixtures under `data/scenarios/`:
+Select the scenario from the dashboard before starting the simulation:
 
 - `calm_day` — near-zero disruption rate, baseline assignment logic
 - `chaos_day` — high disruption rate across all categories
 - `deadline_crunch` — multiple tight/expired deadlines, tests escalation
 - `sensor_noise` — isolated data-quality issues
+
+The backend starts stopped. Open the dashboard, select a scenario, and click **Start**.
 
 ## Interaction modes
 

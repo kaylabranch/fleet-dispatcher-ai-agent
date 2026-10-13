@@ -45,7 +45,6 @@ Edit `.env`:
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.5-flash
 TICK_INTERVAL_SECONDS=5
-SCENARIO=calm_day
 ```
 
 ### Scenario choices
@@ -55,7 +54,8 @@ SCENARIO=calm_day
 - `deadline_crunch` — expired and tight deadlines requiring prioritization/escalation
 - `sensor_noise` — anomalous robot readings and trust checks
 
-Use one scenario per server start. The scenario is loaded when the FastAPI application starts.
+The simulation starts stopped. Select the scenario in the dashboard before clicking **Start**;
+you can change scenarios without editing `.env` or restarting the backend.
 
 ## 4. Start the backend
 
@@ -75,7 +75,10 @@ Useful checks:
 - Pending approvals: `http://localhost:8000/approvals`
 - Interactive API documentation: `http://localhost:8000/docs`
 
-The backend starts an agent cycle every `TICK_INTERVAL_SECONDS` seconds. Each cycle generates configured events, sends a snapshot to Gemini, validates returned function calls, applies permitted actions, advances the simulator, and broadcasts the result over WebSocket.
+The backend waits for the dashboard's **Start** command, then runs an agent cycle every
+`TICK_INTERVAL_SECONDS` seconds. Each cycle generates configured events, sends a snapshot to
+Gemini, validates returned function calls, applies permitted actions, advances the simulator, and
+broadcasts the result over WebSocket.
 
 ## 5. Start the dashboard
 
@@ -97,7 +100,8 @@ The dashboard connects automatically to these internal backend addresses:
 Users normally do not open those addresses directly. Open the Vite dashboard at
 `http://localhost:5173`; the browser uses the REST API and WebSocket behind the scenes.
 
-The dashboard displays the fleet grid, pending tasks, decision reasoning, flagged risks, approval requests, intervention input, and what-if query controls.
+The dashboard displays lifecycle controls, scenario selection, fleet grid, pending tasks, decision
+reasoning, flagged risks, approval requests, intervention input, and what-if query controls.
 
 ## 6. Understand the autonomy midpoint
 
@@ -127,7 +131,22 @@ A supervisor can:
 
 Modification changes the action parameters, but it does not bypass simulator safety rules.
 
-## 7. Use an intervention
+## 7. Run the simulation from the dashboard
+
+The dashboard is the operator's starting point:
+
+1. Open `http://localhost:5173`.
+2. Choose `calm_day`, `chaos_day`, `deadline_crunch`, or `sensor_noise` in the **Scenario** selector.
+3. Click **Start**. The status changes to `running` and cycles begin automatically.
+4. Click **Pause** to hold the current world state while reviewing decisions or approvals.
+5. Click **Start** again to resume a paused simulation.
+6. Click **Stop** to stop automatic cycles without changing the current state.
+7. Click **Reset** to load the selected scenario from cycle zero.
+
+The cycle number, fleet grid, events, decisions, and pending approvals update as the simulation
+runs. Use **Intervene** while running or paused to queue a human instruction for the next cycle.
+
+## 8. Use an intervention
 
 Use the **Intervene** box when something unusual needs human direction, for example:
 
@@ -147,7 +166,7 @@ Invoke-RestMethod `
   -Body '{"message":"Do not use r5 today."}'
 ```
 
-## 8. Review and modify an approval
+## 9. Review and modify an approval
 
 When Gemini proposes a gated action:
 
@@ -184,7 +203,7 @@ Invoke-RestMethod `
 
 Replace `APPROVAL_ID` with the ID returned by `GET /approvals` or shown by the dashboard.
 
-## 9. Ask a what-if question
+## 10. Ask a what-if question
 
 The **What-if query** control is read-only. Example questions include:
 
@@ -202,7 +221,7 @@ Invoke-RestMethod `
   -Body '{"hypothetical_change":"What if r1 went offline?"}'
 ```
 
-## 10. Recommended demo flow
+## 11. Recommended demo flow
 
 1. Start with `SCENARIO=calm_day` and confirm the dashboard connects.
 2. Show an automatic assignment and its reasoning.
@@ -213,7 +232,7 @@ Invoke-RestMethod `
 7. Use a what-if query to show that planning does not mutate the fleet.
 8. Finish with `SCENARIO=chaos_day` to demonstrate flagged risks and failure handling.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### `GEMINI_API_KEY must be set`
 
@@ -240,7 +259,7 @@ Check the Uvicorn terminal for Gemini API or quota errors. The simulator still s
 
 Stop and restart Uvicorn after changing `SCENARIO`; scenarios load at application startup.
 
-## 12. Run tests
+## 13. Run tests
 
 Backend:
 

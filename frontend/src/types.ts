@@ -89,4 +89,8 @@ export interface FleetUpdateMessage {
     fleet: FleetSnapshot;
     decision: DecisionLogEntry | null;
     approvals: PendingApproval[];
+    status: SimulationStatus;
+    scenario: string;
 }
+
+export type SimulationStatus = "stopped" | "running" | "paused";

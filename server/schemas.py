@@ -47,3 +47,18 @@ class QueryRequest(BaseModel):
     """A read-only hypothetical question about current fleet capacity."""
 
     hypothetical_change: str
+
+
+class SimulationControlRequest(BaseModel):
+    """A dashboard command to start, pause, stop, or reset the simulator."""
+
+    action: Literal["start", "pause", "stop", "reset"]
+    scenario: str | None = None
+
+
+class SimulationStatusResponse(BaseModel):
+    """Current simulator lifecycle state and selected scenario."""
+
+    status: Literal["stopped", "running", "paused"]
+    scenario: str
+    cycle: int

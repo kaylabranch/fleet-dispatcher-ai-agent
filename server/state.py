@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect
@@ -46,19 +45,36 @@ class AppState:
     loop: AgentLoop
     connection_manager: ConnectionManager
     pending_user_message: Optional[str] = None
+    status: Literal["stopped", "running", "paused"] = "stopped"
+    scenario_name: str = "calm_day"
+
+    def reset_simulation(self, scenario_name: str | None = None) -> None:
+        """Replace the current simulation with a fresh world for a selected scenario."""
+        selected_scenario = scenario_name or self.scenario_name
+        scenario_path = SCENARIOS_DIR / f"{selected_scenario}.json"
+        if not scenario_path.is_file():
+            raise ValueError(f"Unknown scenario: {selected_scenario}")
+        self.loop = AgentLoop(world=World.from_scenario(scenario_path), agent_client=self.loop.agent_client)
+        self.scenario_name = selected_scenario
+        self.pending_user_message = None
+        self.status = "stopped"
 
 
 _app_state: Optional[AppState] = None
 
 
 def create_app_state() -> AppState:
-    """Build the initial `AppState` from the scenario named by the `SCENARIO` env var."""
-    scenario_name = os.environ.get("SCENARIO", "calm_day")
+    """Build the initial stopped `AppState` with the default dashboard scenario."""
+    scenario_name = "calm_day"
     world = World.from_scenario(SCENARIOS_DIR / f"{scenario_name}.json")
     agent_client = AgentClient()
     loop = AgentLoop(world=world, agent_client=agent_client)
     global _app_state
-    _app_state = AppState(loop=loop, connection_manager=ConnectionManager())
+    _app_state = AppState(
+        loop=loop,
+        connection_manager=ConnectionManager(),
+        scenario_name=scenario_name,
+    )
     return _app_state
 
 

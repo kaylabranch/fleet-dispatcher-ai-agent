@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DecisionLogEntry, FleetSnapshot, FleetUpdateMessage, PendingApproval } from "../types";
+import type { DecisionLogEntry, FleetSnapshot, FleetUpdateMessage, PendingApproval, SimulationStatus } from "../types";
 
 const WEBSOCKET_URL = "ws://localhost:8000/ws";
 
@@ -9,6 +9,8 @@ export function useFleetSocket() {
     const [decisions, setDecisions] = useState<DecisionLogEntry[]>([]);
     const [approvals, setApprovals] = useState<PendingApproval[]>([]);
     const [connected, setConnected] = useState(false);
+    const [status, setStatus] = useState<SimulationStatus>("stopped");
+    const [scenario, setScenario] = useState("calm_day");
     const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
@@ -21,6 +23,8 @@ export function useFleetSocket() {
             const message: FleetUpdateMessage = JSON.parse(event.data);
             setFleet(message.fleet);
             setApprovals(message.approvals ?? []);
+            setStatus(message.status);
+            setScenario(message.scenario);
             if (message.decision) {
                 setDecisions((prev) => [...prev, message.decision as DecisionLogEntry]);
             }
@@ -29,5 +33,5 @@ export function useFleetSocket() {
         return () => socket.close();
     }, []);
 
-    return { fleet, decisions, approvals, connected };
+    return { fleet, decisions, approvals, connected, status, scenario };
 }

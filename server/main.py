@@ -26,6 +26,8 @@ async def _tick_forever() -> None:
     state = get_app_state()
     while True:
         await asyncio.sleep(TICK_INTERVAL_SECONDS)
+        if state.status != "running":
+            continue
         message = state.pending_user_message
         state.pending_user_message = None
         try:
@@ -42,6 +44,8 @@ async def _tick_forever() -> None:
                 "fleet": state.loop.world.get_snapshot(),
                 "decision": entry.model_dump(),
                 "approvals": list(state.loop.pending_approvals.values()),
+                "status": state.status,
+                "scenario": state.scenario_name,
             }
         )
 
@@ -74,6 +78,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             "fleet": state.loop.world.get_snapshot(),
             "decision": None,
             "approvals": list(state.loop.pending_approvals.values()),
+            "status": state.status,
+            "scenario": state.scenario_name,
         }
     )
     try:

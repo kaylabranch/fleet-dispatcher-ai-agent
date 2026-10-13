@@ -11,11 +11,61 @@ from server.schemas import (
     InterventionRequest,
     PendingApprovalsResponse,
     QueryRequest,
+    SimulationControlRequest,
+    SimulationStatusResponse,
 )
 from agent.tools import SimulateScenarioInput, ToolHandlers
 from server.state import get_app_state
 
 router = APIRouter()
+
+
+@router.get("/simulation", response_model=SimulationStatusResponse)
+async def get_simulation_status() -> SimulationStatusResponse:
+    """Return whether the simulation is stopped, running, or paused."""
+    state = get_app_state()
+    return SimulationStatusResponse(
+        status=state.status,
+        scenario=state.scenario_name,
+        cycle=state.loop.world.cycle,
+    )
+
+
+@router.post("/simulation", response_model=SimulationStatusResponse)
+async def control_simulation(request: SimulationControlRequest) -> SimulationStatusResponse:
+    """Start, pause, stop, or reset the simulation from the dashboard."""
+    state = get_app_state()
+    if request.action == "reset":
+        try:
+            state.reset_simulation(request.scenario)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    elif request.action == "start":
+        if request.scenario and request.scenario != state.scenario_name:
+            try:
+                state.reset_simulation(request.scenario)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+        state.status = "running"
+    elif request.action == "pause":
+        state.status = "paused"
+    elif request.action == "stop":
+        state.status = "stopped"
+    response = SimulationStatusResponse(
+        status=state.status,
+        scenario=state.scenario_name,
+        cycle=state.loop.world.cycle,
+    )
+    await state.connection_manager.broadcast(
+        {
+            "fleet": state.loop.world.get_snapshot(),
+            "decision": None,
+            "approvals": list(state.loop.pending_approvals.values()),
+            "status": state.status,
+            "scenario": state.scenario_name,
+        }
+    )
+    return response
 
 
 @router.get("/fleet", response_model=FleetStatusResponse)

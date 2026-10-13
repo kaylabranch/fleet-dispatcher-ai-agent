@@ -3,11 +3,19 @@ import { FleetGrid } from "./FleetGrid";
 import { ChatInput } from "./ChatInput";
 import { ApprovalPanel } from "./ApprovalPanel";
 import { QueryPanel } from "./QueryPanel";
+import { SimulationControls } from "./SimulationControls";
 import { useFleetSocket } from "./hooks/useFleetSocket";
 
 /** Top-level dashboard: fleet grid, live decision log, and the intervention chat input. */
 export function Dashboard() {
-    const { fleet, decisions, approvals = [], connected } = useFleetSocket();
+    const {
+        fleet,
+        decisions,
+        approvals = [],
+        connected,
+        status = "stopped",
+        scenario = "calm_day",
+    } = useFleetSocket();
 
     return (
         <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
@@ -17,6 +25,8 @@ export function Dashboard() {
                     {connected ? "● connected" : "○ disconnected"}
                 </span>
             </header>
+
+            <SimulationControls status={status} scenario={scenario} />
 
             <div className="grid gap-6 md:grid-cols-2">
                 <section>
