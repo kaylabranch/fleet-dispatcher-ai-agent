@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from math import ceil
 from pathlib import Path
 from typing import Optional
@@ -15,11 +15,6 @@ BATTERY_DRAIN_PER_TICK = 2.0
 BATTERY_CHARGE_PER_TICK = 15.0
 LOW_BATTERY_THRESHOLD = 20.0
 CHARGING_STATION = Location(x=0, y=0)
-
-
-def _now() -> datetime:
-    """Return the current timezone-aware timestamp."""
-    return datetime.now(timezone.utc)
 
 
 class World:
@@ -37,6 +32,9 @@ class World:
         self.events = events
         self.disruption_probabilities = disruption_probabilities or {}
         self.cycle = 0
+        timestamps = [robot.last_reported_at for robot in robots.values() if robot.last_reported_at is not None]
+        timestamps.extend(event.timestamp for event in events)
+        self.current_time = min(timestamps, default=datetime.now(timezone.utc))
         self.blocked_robot_ids: set[str] = set()
         self.unavailable_robot_ids: set[str] = set()
         self.untrusted_robot_ids: set[str] = set()
@@ -60,7 +58,7 @@ class World:
         """Serialize the current world state for inclusion in an agent prompt."""
         return {
             "cycle": self.cycle,
-            "timestamp": _now().isoformat(),
+            "timestamp": self.current_time.isoformat(),
             "robots": [r.model_dump(mode="json") for r in self.robots.values()],
             "tasks": [t.model_dump(mode="json") for t in self.tasks.values()],
             "recent_events": [e.model_dump(mode="json") for e in self.events[-recent_events:]],
@@ -75,6 +73,7 @@ class World:
     def tick(self) -> None:
         """Advance the world by one cycle: move robots, drain/charge battery, complete tasks."""
         self.cycle += 1
+        self.current_time += timedelta(minutes=5)
         for robot in self.robots.values():
             if robot.status == "en_route" and robot.current_task_id:
                 self._advance_robot(robot)
@@ -82,7 +81,7 @@ class World:
                 self._charge_robot(robot)
             elif robot.status in ("idle",):
                 robot.battery = max(0.0, robot.battery - BATTERY_DRAIN_PER_TICK * 0.1)
-            robot.last_reported_at = _now()
+            robot.last_reported_at = self.current_time
 
     def _advance_robot(self, robot: Robot) -> None:
         if robot.id in self.blocked_robot_ids:
@@ -135,7 +134,7 @@ class World:
             raise ValueError(f"Task {task_id} is not pending (status={task.status})")
         if task_id in self.tasks_requiring_escalation:
             raise ValueError(f"Task {task_id} requires escalation before assignment")
-        if task.deadline is not None and task.deadline <= _now():
+        if task.deadline is not None and task.deadline <= self.current_time:
             raise ValueError(f"Task {task_id} has an expired deadline")
         required_battery = self._required_battery_for_task(robot, task)
         if robot.battery < required_battery:

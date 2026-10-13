@@ -58,7 +58,7 @@ robots performing delivery and service tasks on a grid.
 
 ## Gemini integration
 
-- Use `GEMINI_API_KEY` and `GEMINI_MODEL`; the default model is `gemini-2.5-flash`.
+- Use `GEMINI_API_KEY` and `GEMINI_MODEL`; the default model is `gemini-3.8-flash`.
 - Keep Gemini-specific code isolated in `agent/client.py`.
 - Keep the simulator/tool boundary independent of the Gemini SDK so handlers remain directly
   testable with fake `ToolCall` values.

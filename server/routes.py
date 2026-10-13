@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from server.schemas import (
@@ -18,6 +20,7 @@ from agent.tools import SimulateScenarioInput, ToolHandlers
 from server.state import get_app_state
 
 router = APIRouter()
+logger = logging.getLogger("fleet_dispatch")
 
 
 @router.get("/simulation", response_model=SimulationStatusResponse)
@@ -35,6 +38,13 @@ async def get_simulation_status() -> SimulationStatusResponse:
 async def control_simulation(request: SimulationControlRequest) -> SimulationStatusResponse:
     """Start, pause, stop, or reset the simulation from the dashboard."""
     state = get_app_state()
+    logger.info(
+        "Simulation control received (action=%s, requested_scenario=%s, current_status=%s, current_cycle=%s)",
+        request.action,
+        request.scenario,
+        state.status,
+        state.loop.world.cycle,
+    )
     if request.action == "reset":
         try:
             state.reset_simulation(request.scenario)
@@ -65,7 +75,14 @@ async def control_simulation(request: SimulationControlRequest) -> SimulationSta
             "approvals": list(state.loop.pending_approvals.values()),
             "status": state.status,
             "scenario": state.scenario_name,
+            "error": state.last_error,
         }
+    )
+    logger.info(
+        "Simulation control applied (status=%s, scenario=%s, cycle=%s)",
+        state.status,
+        state.scenario_name,
+        state.loop.world.cycle,
     )
     return response
 
@@ -97,6 +114,7 @@ async def post_intervention(request: InterventionRequest) -> dict:
     """Queue a human message to be injected into the agent's next cycle."""
     state = get_app_state()
     state.pending_user_message = request.message
+    logger.info("Intervention queued (message_length=%s, simulation_status=%s)", len(request.message), state.status)
     return {"status": "queued"}
 
 
@@ -104,6 +122,7 @@ async def post_intervention(request: InterventionRequest) -> dict:
 async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequest) -> dict:
     """Approve, reject, or modify a held agent action."""
     state = get_app_state()
+    logger.info("Approval response received (approval_id=%s, action=%s)", approval_id, request.action)
     try:
         state.loop.resolve_approval(
             approval_id,
@@ -111,7 +130,9 @@ async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequ
             modified_payload=request.payload,
         )
     except ValueError as exc:
+        logger.warning("Approval response rejected (approval_id=%s, error=%s)", approval_id, exc)
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    logger.info("Approval response applied (approval_id=%s, action=%s)", approval_id, request.action)
     return {"status": request.action}
 
 

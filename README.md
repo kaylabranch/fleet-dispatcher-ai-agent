@@ -60,7 +60,9 @@ npm run dev
 Open the dashboard at the Vite URL, normally `http://localhost:5173`.
 
 Gemini API keys are available through Google AI Studio's free tier, subject to current quota and
-model availability. The default model is `gemini-2.5-flash`; override it with `GEMINI_MODEL`.
+model availability. The default model is `gemini-3.8-flash`; override it with `GEMINI_MODEL`.
+Set `GEMINI_TIMEOUT_SECONDS` to bound provider calls (default: 5 seconds), and `GEMINI_MIN_REQUEST_INTERVAL_SECONDS` to space calls (default: 1 second). Each cycle allows at most three agent turns, including follow-ups. `TICK_INTERVAL_SECONDS` defaults to 2 seconds for a responsive demo. Provider retries are disabled, so a timeout or transient provider failure is logged and the simulator still advances instead of blocking indefinitely.
+Robot movement advances at the beginning of a cycle, before the Gemini request, so a slow provider cannot freeze the map.
 
 ## Scenarios
 

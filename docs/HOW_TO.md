@@ -43,8 +43,10 @@ Edit `.env`:
 
 ```dotenv
 GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.5-flash
-TICK_INTERVAL_SECONDS=5
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_TIMEOUT_SECONDS=5
+GEMINI_MIN_REQUEST_INTERVAL_SECONDS=1
+TICK_INTERVAL_SECONDS=2
 ```
 
 ### Scenario choices
@@ -76,7 +78,7 @@ Useful checks:
 - Interactive API documentation: `http://localhost:8000/docs`
 
 The backend waits for the dashboard's **Start** command, then runs an agent cycle every
-`TICK_INTERVAL_SECONDS` seconds. Each cycle generates configured events, sends a snapshot to
+`TICK_INTERVAL_SECONDS` seconds. The demo defaults to 2 seconds between cycles after the previous cycle finishes. The simulator advances robot movement at the start of each cycle, before waiting for Gemini, so a slow provider cannot freeze the map. Each Gemini request is bounded by `GEMINI_TIMEOUT_SECONDS` (5 seconds by default), spaced by `GEMINI_MIN_REQUEST_INTERVAL_SECONDS` (1 second), and attempted once. Each cycle allows at most three agent turns including follow-ups. Each cycle generates configured events, sends a snapshot to
 Gemini, validates returned function calls, applies permitted actions, advances the simulator, and
 broadcasts the result over WebSocket.
 
@@ -234,6 +236,26 @@ Invoke-RestMethod `
 8. Finish with `SCENARIO=chaos_day` to demonstrate flagged risks and failure handling.
 
 ## 12. Troubleshooting
+
+### Check whether the system is working
+
+Open the browser developer tools with `F12` and select **Console**. Look for messages prefixed
+with `[fleet]`:
+
+- `WebSocket connected` — the dashboard has a live backend connection.
+- `REST update` — the dashboard received a fleet snapshot and shows the cycle number.
+- `simulation control completed` — Start/Pause/Stop/Reset was accepted by the backend.
+- `WebSocket update` — a live cycle broadcast arrived.
+- `REST update failed` or `WebSocket error` — the dashboard cannot reach the backend.
+
+The Uvicorn terminal also logs:
+
+- `Starting simulation cycle ...`
+- `Completed simulation cycle ...`
+- `Agent cycle failed; advanced simulator tick ...`
+
+When reporting a problem, include the latest `[fleet]` browser-console messages and the matching
+Uvicorn lines, but never include `GEMINI_API_KEY`.
 
 ### `GEMINI_API_KEY must be set`
 

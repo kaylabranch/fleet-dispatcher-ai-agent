@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional
@@ -15,6 +16,7 @@ from agent.loop import AgentLoop
 from simulator.world import World
 
 SCENARIOS_DIR = Path(__file__).resolve().parent.parent / "data" / "scenarios"
+logger = logging.getLogger("fleet_dispatch")
 
 
 @dataclass
@@ -26,16 +28,25 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
         self.active_connections.append(websocket)
+        logger.info("Connection manager accepted WebSocket (connections=%s)", len(self.active_connections))
 
     def disconnect(self, websocket: WebSocket) -> None:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+            logger.info("Connection manager removed WebSocket (connections=%s)", len(self.active_connections))
 
     async def broadcast(self, message: dict) -> None:
+        logger.info(
+            "Broadcast requested (cycle=%s, status=%s, connections=%s)",
+            message["fleet"]["cycle"],
+            message["status"],
+            len(self.active_connections),
+        )
         for connection in list(self.active_connections):
             try:
                 await connection.send_json(message)
             except (WebSocketDisconnect, RuntimeError, OSError):
+                logger.warning("Removing failed WebSocket during broadcast")
                 self.disconnect(connection)
 
 
@@ -49,6 +60,7 @@ class AppState:
     status: Literal["stopped", "running", "paused"] = "stopped"
     scenario_name: str = "calm_day"
     wake_event: asyncio.Event | None = None
+    last_error: str | None = None
 
     def reset_simulation(self, scenario_name: str | None = None) -> None:
         """Replace the current simulation with a fresh world for a selected scenario."""
@@ -60,6 +72,8 @@ class AppState:
         self.scenario_name = selected_scenario
         self.pending_user_message = None
         self.status = "stopped"
+        self.last_error = None
+        logger.info("Simulation reset (scenario=%s, cycle=%s)", selected_scenario, self.loop.world.cycle)
 
 
 _app_state: Optional[AppState] = None

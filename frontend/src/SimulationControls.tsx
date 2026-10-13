@@ -25,6 +25,7 @@ export function SimulationControls({ status, scenario }: SimulationControlsProps
         setError("");
         const progressLabel = action === "start" ? "Starting" : action === "pause" ? "Pausing" : action === "stop" ? "Stopping" : "Resetting";
         setMessage(`${progressLabel} simulation...`);
+        console.info(`[fleet] control start action=${action} scenario=${selectedScenario}`);
         try {
             const response = await fetch(`${API_URL}/simulation`, {
                 method: "POST",
@@ -36,12 +37,14 @@ export function SimulationControls({ status, scenario }: SimulationControlsProps
             });
             if (!response.ok) throw new Error(`Request failed: ${response.status}`);
             const result: { status: SimulationStatus } = await response.json();
+            console.info(`[fleet] control complete action=${action} status=${result.status}`);
             setMessage(
                 result.status === "running"
                     ? "Simulation running. The first agent cycle starts now; later cycles follow the configured interval."
                     : `Simulation ${result.status}.`,
             );
         } catch (controlError) {
+            console.error(`[fleet] control failed action=${action}`, controlError);
             setError(controlError instanceof Error ? controlError.message : "Simulation control failed.");
             setMessage("");
         } finally {

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from datetime import datetime, timezone
 from typing import Optional, Protocol
 
@@ -13,7 +15,10 @@ from agent.prompt import build_snapshot, build_system_prompt
 from agent.tools import APPROVAL_REQUIRED_ACTIONS, INPUT_MODELS, ToolHandlers
 from simulator.events import EventGenerator
 from simulator.models import Decision, DecisionLogEntry, PendingApproval
+from simulator.utils import grid_distance
 from simulator.world import World
+logger = logging.getLogger("fleet_dispatch")
+MAX_AGENT_TURNS_PER_CYCLE = 3
 
 
 class DecidesTools(Protocol):
@@ -39,7 +44,12 @@ class AgentLoop:
 
     def run_cycle(self, pending_user_message: Optional[str] = None) -> DecisionLogEntry:
         """Execute one observe-decide-act-update cycle and return the resulting log entry."""
+        cycle_started = time.perf_counter()
+        logger.info("Agent loop started (cycle_before=%s, intervention=%s)", self.world.cycle, bool(pending_user_message))
         self.event_generator.generate(self.world)
+        logger.info("Events generated (event_count=%s)", len(self.world.events))
+        self.world.tick()
+        logger.info("World advanced before agent request (cycle=%s)", self.world.cycle)
 
         system_prompt = build_system_prompt()
         snapshot = build_snapshot(self.world, pending_user_message=pending_user_message)
@@ -47,12 +57,14 @@ class AgentLoop:
         decisions: list[Decision] = []
         flagged_risks: list[str] = []
         tool_calls = self.agent_client.decide(system_prompt, snapshot)
+        logger.info("Agent returned %s tool call(s) in initial response", len(tool_calls))
 
-        for _ in range(8):
+        for turn in range(MAX_AGENT_TURNS_PER_CYCLE):
             if not tool_calls:
                 break
             tool_results: list[dict] = []
             for call in tool_calls:
+                logger.info("Applying tool call (name=%s, id=%s)", call.name, call.id)
                 try:
                     decision, result = self._apply_tool_call(call)
                     if decision is not None:
@@ -62,6 +74,7 @@ class AgentLoop:
                     message = f"rejected tool call '{call.name}': {exc}"
                     flagged_risks.append(message)
                     tool_results.append({"tool_call_id": call.id, "tool_name": call.name, "error": str(exc)})
+                    logger.warning("Tool call rejected (name=%s, error=%s)", call.name, exc)
             else:
                 snapshot = json.dumps(
                     {
@@ -71,11 +84,11 @@ class AgentLoop:
                     indent=2,
                 )
                 tool_calls = self.agent_client.decide(system_prompt, snapshot)
+                logger.info("Agent returned %s follow-up tool call(s) (turn=%s)", len(tool_calls), turn + 2)
                 continue
         else:
-            flagged_risks.append("agent tool-call limit reached; remaining calls were not applied")
-
-        self.world.tick()
+            flagged_risks.append("agent turn limit reached; remaining calls were not applied")
+            logger.warning("Agent turn limit reached (limit=%s)", MAX_AGENT_TURNS_PER_CYCLE)
 
         entry = DecisionLogEntry(
             cycle=self.world.cycle,
@@ -84,6 +97,56 @@ class AgentLoop:
             flagged_risks=flagged_risks,
         )
         self.decision_log.append(entry)
+        logger.info(
+            "Agent loop completed (cycle=%s, decisions=%s, risks=%s, duration=%.3fs)",
+            entry.cycle,
+            len(entry.decisions),
+            len(entry.flagged_risks),
+            time.perf_counter() - cycle_started,
+        )
+        return entry
+
+    def run_fallback_cycle(self, reason: str) -> DecisionLogEntry:
+        """Apply safe local dispatch decisions when the configured provider is unavailable."""
+        decisions: list[Decision] = []
+        flagged_risks = [f"Gemini unavailable; local fallback dispatch used: {reason}"]
+        priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
+        pending_tasks = sorted(
+            (task for task in self.world.tasks.values() if task.status == "pending"),
+            key=lambda task: (priority_order[task.priority], task.deadline is None, task.deadline or self.world.current_time),
+        )
+        for task in pending_tasks:
+            candidates = sorted(
+                (robot for robot in self.world.robots.values() if robot.status == "idle"),
+                key=lambda robot: grid_distance(robot.location, task.pickup),
+            )
+            for robot in candidates:
+                try:
+                    self.world.assign_task(robot.id, task.id)
+                except ValueError:
+                    continue
+                decisions.append(
+                    Decision(
+                        action="assign_task",
+                        robot_id=robot.id,
+                        task_id=task.id,
+                        reasoning=f"[local fallback] assigned nearest eligible robot; provider unavailable ({reason})",
+                    )
+                )
+                break
+        entry = DecisionLogEntry(
+            cycle=self.world.cycle,
+            timestamp=_now(),
+            decisions=decisions,
+            flagged_risks=flagged_risks,
+        )
+        self.decision_log.append(entry)
+        logger.warning(
+            "Local fallback dispatch completed (cycle=%s, assignments=%s, reason=%s)",
+            entry.cycle,
+            len(decisions),
+            reason,
+        )
         return entry
 
     def _apply_tool_call(self, call: ToolCall) -> tuple[Decision | None, dict]:

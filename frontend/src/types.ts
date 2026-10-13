@@ -92,6 +92,7 @@ export interface FleetUpdateMessage {
     approvals: PendingApproval[];
     status: SimulationStatus;
     scenario: string;
+    error: string | null;
 }
 
 export type SimulationStatus = "stopped" | "running" | "paused";

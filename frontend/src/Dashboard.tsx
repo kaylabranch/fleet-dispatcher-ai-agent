@@ -17,6 +17,7 @@ export function Dashboard() {
         status = "stopped",
         scenario = "calm_day",
         connectionError,
+        runtimeError,
     } = useFleetSocket();
 
     return (
@@ -35,6 +36,13 @@ export function Dashboard() {
                     {connectionError} From the repository root, run
                     {" "}
                     <code>.\.venv\Scripts\python.exe -m uvicorn server.main:app --reload</code>.
+                </p>
+            )}
+            {runtimeError && (
+                <p className="rounded border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800" role="alert">
+                    <strong>Backend agent error:</strong> {runtimeError}
+                    <br />
+                    The simulator used local fallback dispatch for this cycle. Check the FastAPI terminal for the full provider error.
                 </p>
             )}
 
