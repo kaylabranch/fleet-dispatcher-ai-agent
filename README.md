@@ -5,6 +5,10 @@ delivery/service robots: assigning tasks, rerouting around disruptions, and expl
 reasoning. See [.github/copilot-instructions.md](.github/copilot-instructions.md) for the full
 design doc.
 
+## How-to guide
+
+For a complete step-by-step operator guide, see [docs/HOW_TO.md](docs/HOW_TO.md). It covers Gemini setup, scenario selection, starting the backend and dashboard, interventions, approvals, modified actions, what-if queries, troubleshooting, and validation.
+
 ## Project layout
 
 ```
@@ -66,9 +70,30 @@ Set `SCENARIO` in `.env` to one of the fixtures under `data/scenarios/`:
 - **Observer** — dashboard streams fleet state + decision log automatically
 - **Intervention** — `POST /intervene` injects a message into the next agent cycle
 - **Approval** — costly actions (`recall_to_charge` on an active-task robot, `escalate_task`) are
-  held in `pending_approval` until `POST /approvals/{id}` approves/rejects them
+  held in `pending_approval` until `POST /approvals/{id}` approves, rejects, or modifies them
 - **Query** — `simulate_scenario` tool call, read-only, no world-state mutation
 
 The dashboard also exposes a read-only **What-if query** endpoint at `POST /query`. Gemini usage
 and free-tier quotas are controlled by Google and are not unlimited; provider errors are surfaced
 instead of silently changing the simulation.
+
+## Human-in-the-loop midpoint
+
+The system is intentionally **hands-off by default with exception-based supervision**:
+
+- Low-risk actions such as normal task assignment, rerouting, status checks, and read-only
+  simulations proceed automatically after Pydantic and simulator validation.
+- Higher-impact actions such as recalling a robot or escalating a task pause in
+  `pending_approval` until a supervisor reviews them.
+- A supervisor can **approve**, **reject**, or **modify and apply** a pending action. Modification
+  uses the same Pydantic model and simulator handler as an autonomous action, so human overrides
+  cannot bypass safety validation.
+- Interventions remain available for unusual situations without requiring a human to monitor every
+  cycle.
+
+This balances autonomy and control: requiring approval for every assignment would make the demo
+slow and operationally unrealistic, while allowing irreversible or disruptive actions without
+review would reduce accountability. The tradeoff is that supervisors still need to monitor the
+approval queue and decide how conservative the approval policy should be for a real deployment.
+This repository is a simulator and does not claim to satisfy regulations or safety requirements
+for physical robots.

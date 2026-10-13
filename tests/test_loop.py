@@ -94,7 +94,7 @@ def test_resolve_approval_applies_action_once_approved(sample_world: World) -> N
     loop = AgentLoop(world=sample_world, agent_client=fake_client, event_generator=_quiet_event_generator())
     loop.run_cycle()
 
-    loop.resolve_approval("call_1", approve=True)
+    loop.resolve_approval("call_1", action="approve")
 
     assert sample_world.robots["r1"].status == "charging"
     assert "call_1" not in loop.pending_approvals
@@ -113,7 +113,30 @@ def test_resolve_approval_discards_rejected_action(sample_world: World) -> None:
     loop = AgentLoop(world=sample_world, agent_client=fake_client, event_generator=_quiet_event_generator())
     loop.run_cycle()
 
-    loop.resolve_approval("call_1", approve=False)
+    loop.resolve_approval("call_1", action="reject")
 
     assert sample_world.robots["r1"].status == "idle"
+    assert "call_1" not in loop.pending_approvals
+
+
+def test_resolve_approval_can_modify_payload_before_applying(sample_world: World) -> None:
+    fake_client = FakeAgentClient(
+        scripted_calls=[
+            ToolCall(
+                id="call_1",
+                name="recall_to_charge",
+                input={"robot_id": "r1", "reasoning": "battery critical"},
+            )
+        ]
+    )
+    loop = AgentLoop(world=sample_world, agent_client=fake_client, event_generator=_quiet_event_generator())
+    loop.run_cycle()
+
+    loop.resolve_approval(
+        "call_1",
+        action="modify",
+        modified_payload={"robot_id": "r1", "reasoning": "Supervisor confirmed charging is safest."},
+    )
+
+    assert sample_world.robots["r1"].status == "charging"
     assert "call_1" not in loop.pending_approvals

@@ -126,16 +126,28 @@ class AgentLoop:
             result,
         )
 
-    def resolve_approval(self, approval_id: str, approve: bool) -> None:
-        """Apply or discard a held action once a human has reviewed it."""
-        approval = self.pending_approvals.pop(approval_id, None)
+    def resolve_approval(
+        self,
+        approval_id: str,
+        action: str,
+        modified_payload: dict | None = None,
+    ) -> None:
+        """Apply, discard, or validate-and-apply a human-reviewed action."""
+        approval = self.pending_approvals.get(approval_id)
         if approval is None:
             raise ValueError(f"Unknown pending approval: {approval_id}")
-        if not approve:
+        if action == "reject":
+            self.pending_approvals.pop(approval_id)
             approval.status = "rejected"
             return
-        approval.status = "approved"
+        if action not in {"approve", "modify"}:
+            raise ValueError(f"Unknown approval action: {action}")
         model_cls = INPUT_MODELS[approval.action]
-        payload = model_cls.model_validate(approval.payload)
+        payload_data = modified_payload if action == "modify" else approval.payload
+        if payload_data is None:
+            raise ValueError("A modified payload is required for modify")
+        payload = model_cls.model_validate(payload_data)
         handler = getattr(self.tool_handlers, approval.action)
         handler(payload)
+        self.pending_approvals.pop(approval_id)
+        approval.status = "approved"

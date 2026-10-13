@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -31,9 +31,10 @@ class InterventionRequest(BaseModel):
 
 
 class ApprovalDecisionRequest(BaseModel):
-    """Approve or reject a held (`pending_approval`) agent action."""
+    """Approve, reject, or modify a held agent action."""
 
-    action: Literal["approve", "reject"]
+    action: Literal["approve", "reject", "modify"]
+    payload: dict[str, Any] | None = None
 
 
 class PendingApprovalsResponse(BaseModel):

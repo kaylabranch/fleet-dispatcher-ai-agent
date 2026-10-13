@@ -50,10 +50,14 @@ async def post_intervention(request: InterventionRequest) -> dict:
 
 @router.post("/approvals/{approval_id}", status_code=200)
 async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequest) -> dict:
-    """Approve or reject a held agent action."""
+    """Approve, reject, or modify a held agent action."""
     state = get_app_state()
     try:
-        state.loop.resolve_approval(approval_id, approve=request.action == "approve")
+        state.loop.resolve_approval(
+            approval_id,
+            action=request.action,
+            modified_payload=request.payload,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"status": request.action}
