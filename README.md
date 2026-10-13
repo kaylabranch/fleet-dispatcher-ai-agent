@@ -46,6 +46,9 @@ Use the virtual-environment interpreter explicitly when running from the reposit
 `pytest` command only works after `.venv\Scripts` has been added to the current PowerShell `PATH`
 by activating the environment with `.venv\Scripts\Activate.ps1`.
 
+The test configuration also filters two known deprecation warnings emitted inside third-party
+Starlette and Google Gen AI SDK modules; warnings from project code are not filtered.
+
 ## Frontend setup
 
 ```powershell
@@ -54,8 +57,7 @@ npm install
 npm run dev
 ```
 
-The dashboard expects the API at `ws://localhost:8000/ws` and `http://localhost:8000` (see
-`frontend/src/hooks/useFleetSocket.ts`).
+Open the dashboard at the Vite URL, normally `http://localhost:5173`.
 
 Gemini API keys are available through Google AI Studio's free tier, subject to current quota and
 model availability. The default model is `gemini-2.5-flash`; override it with `GEMINI_MODEL`.

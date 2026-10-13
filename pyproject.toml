@@ -22,6 +22,11 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore:The anyio\\.abc\\.BlockingPortal alias is deprecated:DeprecationWarning:starlette\\.testclient",
+    "ignore:'_UnionGenericAlias' is deprecated:DeprecationWarning:google\\.genai\\.types",
+]
 
 [build-system]
 requires = ["setuptools>=68"]

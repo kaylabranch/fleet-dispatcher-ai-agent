@@ -89,10 +89,13 @@ npm run dev
 
 Open the Vite URL shown in the terminal, normally `http://localhost:5173`.
 
-The dashboard connects to:
+The dashboard connects automatically to these internal backend addresses:
 
 - WebSocket: `ws://localhost:8000/ws`
 - REST API: `http://localhost:8000`
+
+Users normally do not open those addresses directly. Open the Vite dashboard at
+`http://localhost:5173`; the browser uses the REST API and WebSocket behind the scenes.
 
 The dashboard displays the fleet grid, pending tasks, decision reasoning, flagged risks, approval requests, intervention input, and what-if query controls.
 
@@ -248,6 +251,9 @@ Backend:
 Run that command from the repository root. It intentionally uses the virtual-environment
 interpreter so it works even when PowerShell has not activated `.venv`; a bare `pytest` command
 is not available unless `.venv\Scripts` is on `PATH`.
+
+The project filters two known deprecation warnings emitted inside third-party Starlette and Google
+Gen AI SDK modules while leaving project warnings visible.
 
 Frontend:
 
