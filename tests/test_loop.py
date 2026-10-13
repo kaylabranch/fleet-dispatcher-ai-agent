@@ -140,3 +140,39 @@ def test_resolve_approval_can_modify_payload_before_applying(sample_world: World
 
     assert sample_world.robots["r1"].status == "charging"
     assert "call_1" not in loop.pending_approvals
+
+
+@dataclass
+class CountingAgentClient:
+    """Counts calls and replies with a scripted batch of tool calls on every request."""
+
+    scripted_calls: list[ToolCall]
+    call_count: int = field(default=0, init=False)
+
+    def decide(self, system_prompt: str, snapshot: str) -> list[ToolCall]:
+        self.call_count += 1
+        return self.scripted_calls
+
+
+def test_run_cycle_makes_single_api_call_for_mutating_tools(sample_world: World) -> None:
+    client = CountingAgentClient(
+        scripted_calls=[ToolCall(id="c1", name="assign_task", input={"robot_id": "r1", "task_id": "t1", "reasoning": "closest"})]
+    )
+    loop = AgentLoop(world=sample_world, agent_client=client, event_generator=_quiet_event_generator())
+
+    loop.run_cycle()
+
+    assert client.call_count == 1
+
+
+def test_run_cycle_skips_api_call_when_nothing_to_decide(sample_world: World) -> None:
+    client = CountingAgentClient(scripted_calls=[])
+    loop = AgentLoop(world=sample_world, agent_client=client, event_generator=_quiet_event_generator())
+    for task in sample_world.tasks.values():
+        task.status = "completed"
+    loop.run_cycle()  # first cycle consumes any unseen startup events
+    client.call_count = 0
+
+    loop.run_cycle()
+
+    assert client.call_count == 0

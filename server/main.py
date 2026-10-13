@@ -17,7 +17,7 @@ from server.state import create_app_state, get_app_state
 
 load_dotenv()
 
-TICK_INTERVAL_SECONDS = float(os.environ.get("TICK_INTERVAL_SECONDS", "2"))
+TICK_INTERVAL_SECONDS = float(os.environ.get("TICK_INTERVAL_SECONDS", "5"))
 logger = logging.getLogger("fleet_dispatch")
 
 

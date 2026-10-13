@@ -19,7 +19,10 @@ from simulator.models import Decision, DecisionLogEntry, PendingApproval
 from simulator.utils import grid_distance
 from simulator.world import World
 logger = logging.getLogger("fleet_dispatch")
-MAX_AGENT_TURNS_PER_CYCLE = 3
+MAX_AGENT_TURNS_PER_CYCLE = 2
+LOW_BATTERY_THRESHOLD = 20
+# Only these tools return data the model needs to see before deciding; mutating tools do not need a follow-up call.
+INFORMATIONAL_TOOLS = {"get_fleet_status", "simulate_scenario"}
 
 
 class DecidesTools(Protocol):
@@ -42,6 +45,21 @@ class AgentLoop:
         self.tool_handlers = ToolHandlers(world)
         self.decision_log: list[DecisionLogEntry] = []
         self.pending_approvals: dict[str, PendingApproval] = {}
+        self._seen_event_ids: set[str] = set()
+
+    def _needs_agent(self, pending_user_message: Optional[str]) -> bool:
+        """Return True only when there is something new for the model to decide, to avoid wasted API calls."""
+        new_events = {event.id for event in self.world.events} - self._seen_event_ids
+        if pending_user_message or new_events:
+            return True
+        robots = self.world.robots.values()
+        has_idle = any(robot.status == "idle" for robot in robots)
+        has_pending_task = any(task.status == "pending" for task in self.world.tasks.values())
+        low_battery_idle = any(
+            robot.status == "idle" and robot.battery <= LOW_BATTERY_THRESHOLD and not self._has_pending_approval("recall_to_charge", robot.id)
+            for robot in robots
+        )
+        return (has_idle and has_pending_task) or low_battery_idle
 
     def run_cycle(self, pending_user_message: Optional[str] = None) -> DecisionLogEntry:
         """Execute one observe-decide-act-update cycle and return the resulting log entry."""
@@ -57,13 +75,20 @@ class AgentLoop:
 
         decisions: list[Decision] = []
         flagged_risks: list[str] = []
-        tool_calls = self.agent_client.decide(system_prompt, snapshot)
+        needs_agent = self._needs_agent(pending_user_message)
+        self._seen_event_ids = {event.id for event in self.world.events}
+        if not needs_agent:
+            logger.info("Skipping agent call: nothing new to decide (cycle=%s)", self.world.cycle)
+            tool_calls: list[ToolCall] = []
+        else:
+            tool_calls = self.agent_client.decide(system_prompt, snapshot)
         logger.info("Agent returned %s tool call(s) in initial response", len(tool_calls))
 
         for turn in range(MAX_AGENT_TURNS_PER_CYCLE):
             if not tool_calls:
                 break
             tool_results: list[dict] = []
+            needs_follow_up = False
             for call in tool_calls:
                 logger.info("Applying tool call (name=%s, id=%s)", call.name, call.id)
                 try:
@@ -71,25 +96,23 @@ class AgentLoop:
                     if decision is not None:
                         decisions.append(decision)
                     tool_results.append({"tool_call_id": call.id, "tool_name": call.name, "result": result})
+                    needs_follow_up = needs_follow_up or call.name in INFORMATIONAL_TOOLS
                 except (ValidationError, ValueError) as exc:
                     message = f"rejected tool call '{call.name}': {exc}"
                     flagged_risks.append(message)
                     tool_results.append({"tool_call_id": call.id, "tool_name": call.name, "error": str(exc)})
                     logger.warning("Tool call rejected (name=%s, error=%s)", call.name, exc)
-            else:
-                snapshot = json.dumps(
-                    {
-                        "fleet_snapshot": self.world.get_snapshot(),
-                        "tool_results": tool_results,
-                    },
-                    indent=2,
-                )
-                tool_calls = self.agent_client.decide(system_prompt, snapshot)
-                logger.info("Agent returned %s follow-up tool call(s) (turn=%s)", len(tool_calls), turn + 2)
-                continue
-        else:
-            flagged_risks.append("agent turn limit reached; remaining calls were not applied")
-            logger.warning("Agent turn limit reached (limit=%s)", MAX_AGENT_TURNS_PER_CYCLE)
+            if not needs_follow_up or turn == MAX_AGENT_TURNS_PER_CYCLE - 1:
+                break
+            snapshot = json.dumps(
+                {
+                    "fleet_snapshot": self.world.get_snapshot(),
+                    "tool_results": tool_results,
+                },
+                indent=2,
+            )
+            tool_calls = self.agent_client.decide(system_prompt, snapshot)
+            logger.info("Agent returned %s follow-up tool call(s) (turn=%s)", len(tool_calls), turn + 2)
 
         entry = DecisionLogEntry(
             cycle=self.world.cycle,
@@ -215,6 +238,9 @@ class AgentLoop:
         reasoning = getattr(payload, "reasoning", None) or getattr(payload, "reason", "")
 
         if call.name in APPROVAL_REQUIRED_ACTIONS:
+            subject_id = getattr(payload, "robot_id", None) or getattr(payload, "task_id", "")
+            if self._has_pending_approval(call.name, subject_id):
+                return None, {"status": "already_pending_approval"}
             approval = PendingApproval(
                 id=call.id,
                 action=call.name,

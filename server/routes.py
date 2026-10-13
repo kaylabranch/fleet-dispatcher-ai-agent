@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException
+from pydantic import ValidationError
 
 from server.schemas import (
     ApprovalDecisionRequest,
@@ -131,8 +132,21 @@ async def post_approval_decision(approval_id: str, request: ApprovalDecisionRequ
         )
     except ValueError as exc:
         logger.warning("Approval response rejected (approval_id=%s, error=%s)", approval_id, exc)
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        status_code = 404 if "Unknown pending approval" in str(exc) else 409
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid approval payload: {exc.errors()[0]['msg']}") from exc
     logger.info("Approval response applied (approval_id=%s, action=%s)", approval_id, request.action)
+    await state.connection_manager.broadcast(
+        {
+            "fleet": state.loop.world.get_snapshot(),
+            "decision": None,
+            "approvals": list(state.loop.pending_approvals.values()),
+            "status": state.status,
+            "scenario": state.scenario_name,
+            "error": state.last_error,
+        }
+    )
     return {"status": request.action}
 
 

@@ -26,8 +26,26 @@ describe("DecisionLog", () => {
     it("renders decisions and flagged risks for each cycle", () => {
         render(<DecisionLog entries={[entry]} />);
         expect(screen.getByText(/cycle 42/i)).toBeInTheDocument();
-        expect(screen.getByText(/assign_task/)).toBeInTheDocument();
+        expect(screen.getByText(/assign r1 to task t13/i)).toBeInTheDocument();
         expect(screen.getByText(/r1 is idle, closest to pickup/)).toBeInTheDocument();
         expect(screen.getByText(/deadline already passed on arrival/)).toBeInTheDocument();
+    });
+
+    it("hides internal prefixes and shows an approval badge", () => {
+        const pending: DecisionLogEntry = {
+            cycle: 7,
+            timestamp: "2026-09-21T18:02:15Z",
+            decisions: [{ action: "recall_to_charge", robot_id: "r3", task_id: null, reasoning: "[pending approval] battery low" }],
+            flagged_risks: [],
+        };
+        render(<DecisionLog entries={[pending]} />);
+        expect(screen.getByText("Send r3 to charge")).toBeInTheDocument();
+        expect(screen.getByText("Awaiting approval")).toBeInTheDocument();
+        expect(screen.getByText("battery low")).toBeInTheDocument();
+    });
+
+    it("skips cycles with no decisions or risks", () => {
+        render(<DecisionLog entries={[{ cycle: 3, timestamp: "2026-09-21T18:02:15Z", decisions: [], flagged_risks: [] }]} />);
+        expect(screen.getByText(/no decisions logged yet/i)).toBeInTheDocument();
     });
 });
